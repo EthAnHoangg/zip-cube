@@ -17,7 +17,7 @@
     --card:#efe6cf; --card-ink:#0a2724; --card-sub:#4a5a56;
     /* canvas + 3D tokens, read by JS readTokens() — keep these hex */
     --cube-body:#0a2724;
-    --tile:#efe6cf; --tile-path:#ffc98f; --tile-hot:#a34b1e; --tile-bad:#e04f3f;
+    --tile:#efe6cf; --tile-path:#ffc98f; --tile-hot:#a34b1e; --tile-bad:#e04f3f; --tile-hint:#a5e3bd;
     --path:#ff6b2c; --path-solved:#5fd68b; --head-ring:#ffe3c2;
     --badge-bg:#1b2b28; --badge-ink:#efe6cf;
     --tree-active:#ff6b2c; --tree-back:#4a625d; --tree-prune:#2fbf9f; --tree-sol:#8df2b0; --tree-num:#071f1d;
@@ -32,6 +32,7 @@
     --card:#fffcf3;
     --path-solved:#1f8a4d; --head-ring:#7a3d12;
     --tree-back:#7f9089; --tree-prune:#177f69; --tree-sol:#238f55;
+    --tile-hint:#7ccf9e;
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{height:100%;overflow:hidden}
@@ -165,6 +166,7 @@
   <div class="row playOnly">
     <button id="undoBtn">Undo</button>
     <button id="resetBtn">Reset</button>
+    <button id="hintBtn">💡 Hint</button>
   </div>
   <div class="row solverOnly">
     <button id="playBtn" class="primary">▶ Play</button>
@@ -207,6 +209,7 @@
       cubeBody:new THREE.Color(v('--cube-body')),
       tile:new THREE.Color(v('--tile')), tilePath:new THREE.Color(v('--tile-path')),
       tileHot:new THREE.Color(v('--tile-hot')), tileBad:new THREE.Color(v('--tile-bad')),
+      tileHint:new THREE.Color(v('--tile-hint')),
       path:v('--path'), pathSolved:v('--path-solved'), headRing:v('--head-ring'),
       accent:v('--accent'), badgeBg:v('--badge-bg'), badgeInk:v('--badge-ink'),
       netTag:`rgba(${fg},0.4)`, treeLine:`rgba(${fg},0.28)`, treeNum:v('--tree-num'),
@@ -366,6 +369,8 @@
   let path=[], heat=new Uint32Array(24), solvedNow=false;
   const onPath=new Uint8Array(24);   // mask of path[], rebuilt once per dirty flush
   let flash={id:-1, until:0};
+  let hint={id:-1, until:0}, hintsUsed=0;
+  let orient=null;   // active hint auto-turn tween {from,to,t0,dur}
   let viewsDirty=true, lastLog='';
   const log = m => { lastLog=m; $('logline').textContent=m; };
   const nextExpected = p => {
@@ -413,6 +418,7 @@
   }
   const tileColor=id=>{
     if(flash.id===id && performance.now()<flash.until) return T.tileBad;
+    if(hint.id===id && performance.now()<hint.until) return T.tileHint;
     if(onPath[id]) return T.tilePath;
     const h=Math.min(1, Math.log2(1+heat[id])/6);
     return T.tile.clone().lerp(T.tileHot,h);
@@ -486,6 +492,23 @@
       g.strokeStyle=T.headRing; g.lineWidth=1.6;
       g.beginPath(); g.arc(hp.x,hp.y,cs*0.3,0,Math.PI*2); g.stroke();
     }
+    if(mode==='play' && path.length && path.length<24){
+      const head=cells[path[path.length-1]], hp=netPx(head);
+      const exp=nextExpected(path);
+      g.strokeStyle=T.accent;
+      g.lineWidth=Math.max(1.4,cs*0.09);
+      head.nbrIds.forEach(nb=>{
+        if(onPath[nb]) return;
+        const c2=cells[nb];
+        if(c2.num && (c2.num!==exp || (c2.num===N && path.length!==23))) return;
+        const p=netPx(c2);
+        const jump=Math.hypot(p.x-hp.x,p.y-hp.y) >= cs*1.5;
+        g.setLineDash(jump?[cs*0.16,cs*0.13]:[]);
+        rr(g, p.x-cs/2+pad*1.8, p.y-cs/2+pad*1.8, cs-3.6*pad, cs-3.6*pad, cs*0.12);
+        g.stroke();
+      });
+      g.setLineDash([]);
+    }
     cells.forEach(c=>{
       if(!c.num) return;
       const p=netPx(c), r=cs*0.26;
@@ -522,6 +545,7 @@
       if(cell.num===N && path.length!==23){ doFlash(cell.id, `${N} must be your last cell`); return false; }
     }
     path.push(cell.id);
+    hint.until=0;
     viewsDirty=true; updateHud();
     if(path.length===24) userWin();
     return true;
@@ -546,8 +570,58 @@
       log('only cells next to the path end');
   }
   function userWin(){
-    $('winStats').textContent=`All 24 cells, 1 → ${N}, drawn by hand across three dimensions.`;
+    const h=hintsUsed?` — with ${hintsUsed} hint${hintsUsed>1?'s':''}`:'';
+    $('winStats').textContent=`All 24 cells, 1 → ${N}, drawn by hand across three dimensions${h}.`;
     $('win').classList.add('show');
+  }
+
+  // ---- hint: same rules + prune as the solver, but returns the solution itself ----
+  function solveFrom(base){
+    const visited=new Set(base);
+    if(base.length===24) return base.slice();
+    if(!connectedOK(visited, base[base.length-1])) return null;
+    let nodes=0;
+    const out=base.slice();
+    function dfs(head, expected, depth){
+      if(++nodes>200000) return false;
+      if(depth===24) return true;
+      for(const nb of cells[head].order){
+        if(visited.has(nb)) continue;
+        const num=numByCell[nb];
+        if(num&&num!==expected) continue;
+        if(num===N&&depth!==23) continue;
+        visited.add(nb); out.push(nb);
+        if(connectedOK(visited,nb) && dfs(nb, num?expected+1:expected, depth+1)) return true;
+        visited.delete(nb); out.pop();
+      }
+      return false;
+    }
+    return dfs(base[base.length-1], nextExpected(base), base.length) ? out : null;
+  }
+  function faceCell(c){
+    const target=new THREE.Vector3(0.22,0.18,0.96).normalize();  // near-front, slight tilt
+    const cur=c.normal.clone().applyQuaternion(cube.quaternion);
+    const dq=new THREE.Quaternion().setFromUnitVectors(cur,target);
+    orient={from:cube.quaternion.clone(), to:dq.multiply(cube.quaternion).normalize(),
+            t0:performance.now(), dur:650};
+  }
+  function doHint(){
+    if(mode!=='play'||path.length===24) return;
+    hintsUsed++;
+    const sol=solveFrom(path);
+    if(sol){
+      hint={id:sol[path.length], until:performance.now()+4000};
+      log('💡 try the glowing cell');
+    } else {
+      let k=path.length-1;
+      while(k>1 && !solveFrom(path.slice(0,k))) k--;
+      hint={id:path[k-1], until:performance.now()+4000};
+      const back=path.length-k;
+      log(`💡 dead end — undo ${back} move${back>1?'s':''} (back to the glowing cell)`);
+    }
+    faceCell(cells[hint.id]);
+    viewsDirty=true;
+    setTimeout(()=>{viewsDirty=true;}, 4100);
   }
 
   // ================= SOLVER =================
@@ -764,10 +838,12 @@
 
   // ---- controls ----
   $('undoBtn').onclick=popOne;
+  $('hintBtn').onclick=doHint;
   $('resetBtn').onclick=()=>{ path=[startCell]; viewsDirty=true; updateHud(); };
   $('newBtn').onclick=()=>{
     makePuzzle(); path=[startCell]; basePath=[startCell];
     resetRunState();
+    hint={id:-1,until:0}; hintsUsed=0;
     $('win').classList.remove('show');
     if(mode==='solver') rebuildTrace(); else { log('new puzzle — start at 1'); viewsDirty=true; updateHud(); }
   };
@@ -807,6 +883,7 @@
   let cDown=null, cMode=null, cMoved=false;
   renderer.domElement.addEventListener('pointerdown',e=>{
     cDown={x:e.clientX,y:e.clientY}; cMoved=false;
+    orient=null;                       // grabbing the cube cancels the hint auto-turn
     const c=pickCell(e.clientX,e.clientY);
     cMode=(mode==='play' && c && c.id===path[path.length-1])?'draw':'rotate';
     renderer.domElement.setPointerCapture(e.pointerId);
@@ -932,7 +1009,11 @@
       }
       if(treeDirty && t-lastTreeDraw>0.05){ drawTree(); treeDirty=false; lastTreeDraw=t; }
     }
-    if(!cDown&&!reduce){
+    if(orient){
+      const k=Math.min(1,(performance.now()-orient.t0)/orient.dur);
+      cube.quaternion.copy(orient.from).slerp(orient.to, 1-Math.pow(1-k,3));
+      if(k>=1) orient=null;
+    } else if(!cDown&&!reduce){
       const idle=performance.now()-lastInteract-IDLE_MS;
       if(idle>0) cube.rotation.y+=0.0012*Math.min(1,idle/2000);
     }

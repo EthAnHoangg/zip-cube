@@ -31,8 +31,9 @@ Every puzzle is guaranteed solvable: the generator finds a random Hamiltonian pa
 | **Drag anywhere else** on the cube | Rotate the cube |
 | **Tap a visited cell** | Truncate the path back to that cell |
 | **Tap an unvisited neighbor** of the head | Extend one step |
-| **Net mini-map** (bottom-right) | The cube unfolded flat — fully interactive, draw on it too; `⤢` expands it |
+| **Net mini-map** (bottom-right) | The cube unfolded flat — fully interactive, draw on it too; `⤢` expands it. Rings mark your legal next moves: solid = flat-adjacent, **dashed = wrap-around jump** the flat map hides |
 | **Undo / Reset** | Pop one step / back to checkpoint 1 |
+| **💡 Hint** | Glows the correct next cell — or, if you're in a dead end, the cell to backtrack to and how many moves to undo. The win card counts hints used |
 | **☀ / ☾** | Toggle light & dark theme |
 
 Illegal moves flash red and tell you why (`reach 3 first`, `6 must be your last cell`). The mini-map is the answer to "what's behind the cube" — jumps that cross hidden geometry render as dashed arcs.
