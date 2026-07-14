@@ -902,6 +902,12 @@
 
   // ================= LOOP =================
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // attract-mode rotation: spin only while the player is idle, never mid-thought
+  const IDLE_MS=3000;
+  let lastInteract=-1e9;                 // far past → spins on first load
+  const noteInteract=()=>lastInteract=performance.now();
+  addEventListener('pointerdown',noteInteract,true);
+  addEventListener('wheel',noteInteract,{capture:true,passive:true});
   const clock=new THREE.Clock();
   let acc=0, lastTreeDraw=0;
   function loop(){
@@ -926,7 +932,10 @@
       }
       if(treeDirty && t-lastTreeDraw>0.05){ drawTree(); treeDirty=false; lastTreeDraw=t; }
     }
-    if(!cDown&&!reduce) cube.rotation.y+=0.0012;
+    if(!cDown&&!reduce){
+      const idle=performance.now()-lastInteract-IDLE_MS;
+      if(idle>0) cube.rotation.y+=0.0012*Math.min(1,idle/2000);
+    }
     if(headMesh) headMesh.scale.setScalar(1+Math.sin(t*4)*0.12);
     renderer.render(sceneG,camera);
   }
