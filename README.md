@@ -4,6 +4,8 @@ A [LinkedIn-Zip](https://www.linkedin.com/games/zip)-style path puzzle, lifted o
 
 The entire game is one self-contained HTML file. No build step, no install, no framework beyond Three.js from a CDN. Open `index.html` in a browser and play.
 
+![Play mode — drawing a path on the 3D cube, with the numbered checkpoints and the net mini-map](docs/images/play-dark.png)
+
 ---
 
 ## The puzzle
@@ -39,6 +41,8 @@ Illegal moves flash red and tell you why (`reach 3 first`, `6 must be your last 
 
 Switch to **🤖 AI solver** at any moment and the solver picks up *from your current position* — it never touches your board; switch back and your hand-drawn path is exactly where you left it.
 
+![Solver mode after finding a solution — the green path wrapped around the cube and traced on the net, the search tree showing backtracked and pruned branches, and counters reading 1,773 pushes / 960 backtracks / 790 prunes](docs/images/solver.png)
+
 It runs a depth-first search with one classic pruning rule, and every decision is animated across three synchronized views:
 
 - **The cube & net** — the path grows and retracts live; tiles accumulate a **heat map** (ivory → burnt orange, log scale) showing where the search churned.
@@ -55,6 +59,8 @@ The search runs to completion **up front** and records a trace of events; the an
 
 ## Theming
 
+![Light theme — the same board on warm paper, toggled with the ☀/☾ button in the header](docs/images/play-light.png)
+
 All colors — CSS chrome, Three.js materials, badge textures, both 2D canvases — resolve through **semantic design tokens** (CSS custom properties) defined once in `:root` and overridden per theme:
 
 ```css
@@ -70,6 +76,7 @@ JS reads the tokens once per switch (`readTokens()` → cached `T` object), reti
 ```
 index.html                       the whole game (markup, styles, logic)
 docs/puzzle-and-solver.md        deep dive: generator & solver algorithms
+docs/images/                     README screenshots
 docs/superpowers/specs/          design docs
 .claude/skills/verify/SKILL.md   headless-Chrome verification recipe
 CLAUDE.md                        architecture notes for AI-assisted development

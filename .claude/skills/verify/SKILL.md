@@ -1,11 +1,11 @@
 ---
 name: verify
-description: How to launch and drive zip-cube-v2.html headlessly to verify changes
+description: How to launch and drive index.html headlessly to verify changes
 ---
 
 # Verifying zip-cube
 
-Single-file app (`zip-cube-v2.html`), no build. Needs network (Three.js CDN) and WebGL.
+Single-file app (`index.html`), no build. Needs network (Three.js CDN) and WebGL.
 
 ## Syntax check (fast)
 

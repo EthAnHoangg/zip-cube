@@ -4,7 +4,7 @@ Date: 2026-07-14 · Status: approved (Approach A, full retheme, manual toggle)
 
 ## Goal
 
-Add a light theme to `zip-cube-v2.html` and refactor all color usage — CSS rules,
+Add a light theme to `index.html` and refactor all color usage — CSS rules,
 Three.js materials, badge textures, net/tree canvas draws — onto a single design-token
 layer so additional themes are one CSS block away.
 
