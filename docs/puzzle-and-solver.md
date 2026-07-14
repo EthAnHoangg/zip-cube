@@ -1,6 +1,6 @@
 # How the Puzzle Generator and the Solver Work
 
-This document explains the two algorithmic hearts of `zip-cube-v2.html`:
+This document explains the two algorithmic hearts of `index.html`:
 
 1. **Puzzle generation** — `hamiltonianPath()` + `makePuzzle()` (lines ~257–301)
 2. **The solver** — `connectedOK()` + `buildTrace()` + trace playback (lines ~480–648)

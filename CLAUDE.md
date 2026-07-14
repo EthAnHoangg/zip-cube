@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Zip Cube — a LinkedIn-Zip-style puzzle played on the surface of a 3D cube, plus an animated DFS solver visualization. The entire app is one self-contained file, `zip-cube-v2.html`: inline CSS, inline JS (one IIFE), no build step, no tests, no package manager. The only dependency is Three.js r128 loaded from a CDN, so the page needs network access on first load.
+Zip Cube — a LinkedIn-Zip-style puzzle played on the surface of a 3D cube, plus an animated DFS solver visualization. The entire app is one self-contained file, `index.html`: inline CSS, inline JS (one IIFE), no build step, no tests, no package manager. The only dependency is Three.js r128 loaded from a CDN, so the page needs network access on first load.
 
 ## Running
 
-Open `zip-cube-v2.html` directly in a browser, or serve it (e.g. `python3 -m http.server`) and open it. Verify changes manually in the browser; the UI is touch-first (pointer events, `touch-action:none`), so test drag interactions with a mouse or device emulation.
+Open `index.html` directly in a browser, or serve the directory (e.g. `python3 -m http.server`) and open it. Verify changes manually in the browser; the UI is touch-first (pointer events, `touch-action:none`), so test drag interactions with a mouse or device emulation.
 
 ## Architecture
 
