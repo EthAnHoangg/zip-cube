@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Zip Cube</title>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@400;500;700&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --felt:#0d3531; --felt-deep:#071f1d; --ink:#0a2724;
+    --ivory:#efe6cf; --tange:#ff6b2c; --peach:#ffc98f; --ok:#5fd68b; --bad:#e04f3f;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden}
+  body{
+    font-family:'Space Grotesk',system-ui,sans-serif;
+    background:radial-gradient(120% 90% at 50% 20%, var(--felt) 0%, var(--felt-deep) 100%);
+    color:var(--ivory); touch-action:none; user-select:none;
+    display:flex; flex-direction:column;
+  }
+  header{display:flex;align-items:center;justify-content:space-between;padding:8px 14px 4px;flex:0 0 auto}
+  .wordmark{font-family:'Bungee',cursive;font-size:18px}
+  .wordmark sup{color:var(--tange);font-size:11px}
+  .wordmark small{display:block;font-family:'Space Grotesk';font-size:9.5px;letter-spacing:1.4px;
+    text-transform:uppercase;color:rgba(239,230,207,.55)}
+  .stats{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+  .stat{background:rgba(239,230,207,.07);border:1px solid rgba(239,230,207,.16);
+    border-radius:9px;padding:2px 8px;font-size:10px}
+  .stat b{display:block;font-family:'Space Mono',monospace;font-size:12.5px;color:var(--tange)}
+  .stat.pr b{color:var(--ok)}
+
+  /* ---- cube is the hero ---- */
+  #cubePane{position:relative;min-height:170px}
+  body.play #cubePane{flex:1 1 auto}
+  body.solver #cubePane{flex:0 0 40%}
+
+  /* ---- net: compact mini-map overlay, still playable ---- */
+  #netPane{
+    position:absolute;bottom:10px;right:10px;z-index:4;
+    width:min(46%,250px);aspect-ratio:8/6;
+    border:1px solid rgba(239,230,207,.18);border-radius:12px;
+    background:rgba(7,31,29,.72);backdrop-filter:blur(3px);
+    box-shadow:0 8px 26px rgba(0,0,0,.35);
+    transition:width .18s ease;
+  }
+  #netPane.big{width:min(92%,460px)}
+  #netCanvas{position:absolute;inset:0;width:100%;height:100%;border-radius:12px}
+  #netExpand{
+    position:absolute;top:4px;right:4px;z-index:5;
+    font-size:11px;line-height:1;padding:5px 7px;border-radius:7px;
+    background:rgba(239,230,207,.1);border:1px solid rgba(239,230,207,.2);
+  }
+  .paneTag{position:absolute;top:6px;left:9px;font-size:9px;letter-spacing:1.2px;
+    text-transform:uppercase;color:rgba(239,230,207,.45);pointer-events:none;z-index:2}
+
+  #logline{flex:0 0 auto;text-align:center;font-family:'Space Mono',monospace;font-size:11px;
+    color:var(--peach);padding:3px 12px;min-height:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #treePane{flex:1 1 auto;position:relative;margin:0 8px;
+    border:1px solid rgba(239,230,207,.14);border-radius:12px;background:rgba(7,31,29,.45);overflow:hidden}
+  body.play #treePane{display:none}
+  #treeCanvas{position:absolute;inset:0;width:100%;height:100%}
+  .treeLegend{position:absolute;top:5px;left:9px;font-size:9.5px;color:rgba(239,230,207,.6);pointer-events:none}
+  .treeLegend i{display:inline-block;width:7px;height:7px;border-radius:50%;margin:0 3px 0 7px;vertical-align:-1px}
+  #followBtn{position:absolute;bottom:7px;right:7px;font-size:10.5px;padding:5px 9px;border-radius:8px}
+
+  footer{flex:0 0 auto;display:flex;flex-direction:column;gap:6px;align-items:center;
+    padding:7px 12px calc(8px + env(safe-area-inset-bottom))}
+  .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center}
+  body.play .solverOnly{display:none!important}
+  body.solver .playOnly{display:none!important}
+  button{font-family:inherit;font-size:12px;font-weight:700;padding:8px 12px;border-radius:10px;
+    border:1px solid rgba(239,230,207,.22);background:rgba(239,230,207,.07);color:var(--ivory);cursor:pointer}
+  button:active{transform:scale(.96)}
+  button.primary{background:var(--tange);border-color:var(--tange);color:#1c0d04}
+  button.on{background:rgba(95,214,139,.2);border-color:var(--ok);color:var(--ok)}
+  button:focus-visible,input:focus-visible{outline:2px solid var(--tange);outline-offset:2px}
+  .seg{display:flex;border:1px solid rgba(239,230,207,.22);border-radius:11px;overflow:hidden}
+  .seg button{border:none;border-radius:0;background:transparent;padding:8px 14px}
+  .seg button.active{background:var(--tange);color:#1c0d04}
+  .speed{display:flex;align-items:center;gap:5px;font-size:10.5px;color:rgba(239,230,207,.7)}
+  input[type=range]{width:100px;accent-color:var(--tange)}
+  .toggle{display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;
+    padding:7px 9px;border-radius:10px;border:1px solid rgba(239,230,207,.22);background:rgba(239,230,207,.05)}
+  .toggle input{accent-color:var(--ok);width:13px;height:13px}
+  #progress{width:min(420px,90vw);height:3px;border-radius:2px;background:rgba(239,230,207,.14);overflow:hidden}
+  #progressFill{height:100%;width:0%;background:var(--tange)}
+  #win{position:fixed;inset:0;z-index:10;display:none;align-items:center;justify-content:center;
+    background:rgba(7,31,29,.78);backdrop-filter:blur(4px)}
+  #win.show{display:flex}
+  .card{background:var(--ivory);color:var(--ink);border-radius:20px;padding:26px 30px;
+    text-align:center;max-width:290px;box-shadow:0 24px 60px rgba(0,0,0,.45)}
+  .card h2{font-family:'Bungee',cursive;font-size:26px;color:var(--tange);margin-bottom:6px}
+  .card p{font-size:13.5px;margin-bottom:16px;color:#4a5a56}
+</style>
+</head>
+<body class="play">
+
+<header>
+  <div class="wordmark">ZIP<sup>3</sup><small id="modeTag">play — draw on the cube</small></div>
+  <div class="stats playOnly">
+    <div class="stat">next <b id="pNext">2</b></div>
+    <div class="stat">filled <b id="pFilled">1</b>/24</div>
+  </div>
+  <div class="stats solverOnly">
+    <div class="stat">pushes<b id="sPush">0</b></div>
+    <div class="stat">backtracks<b id="sPop">0</b></div>
+    <div class="stat pr">prunes<b id="sPrune">0</b></div>
+    <div class="stat">depth<b id="sDepth">0</b>/24</div>
+  </div>
+</header>
+
+<div id="cubePane">
+  <div id="netPane">
+    <div class="paneTag">net</div>
+    <canvas id="netCanvas"></canvas>
+    <button id="netExpand" aria-label="expand net">⤢</button>
+  </div>
+</div>
+
+<div id="logline"></div>
+
+<div id="treePane">
+  <canvas id="treeCanvas"></canvas>
+  <div class="treeLegend">
+    <i style="background:#ff6b2c"></i>path <i style="background:#4a625d"></i>backtracked
+    <i style="background:#2fbf9f"></i>pruned <i style="background:#8df2b0"></i>solution
+  </div>
+  <button id="followBtn" class="on">⌖ follow</button>
+</div>
+
+<footer>
+  <div id="progress" class="solverOnly"><div id="progressFill"></div></div>
+  <div class="row playOnly">
+    <button id="undoBtn">Undo</button>
+    <button id="resetBtn">Reset</button>
+  </div>
+  <div class="row solverOnly">
+    <button id="playBtn" class="primary">▶ Play</button>
+    <button id="stepBtn">Step</button>
+    <button id="restartBtn">⟲ Replay</button>
+    <label class="toggle"><input type="checkbox" id="pruneChk" checked> pruning</label>
+    <div class="speed">slow <input type="range" id="speed" min="0" max="100" value="40"> fast</div>
+  </div>
+  <div class="row">
+    <div class="seg">
+      <button id="modePlay" class="active">🎮 Play</button>
+      <button id="modeSolver">🤖 AI solver</button>
+    </div>
+    <button id="newBtn">New puzzle</button>
+  </div>
+</footer>
+
+<div id="win">
+  <div class="card">
+    <h2>Solved!</h2>
+    <p id="winStats"></p>
+    <button id="againBtn" class="primary">New puzzle</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+
+  // ================= 3D CUBE (hero) =================
+  const pane = $('cubePane');
+  const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  pane.insertBefore(renderer.domElement, pane.firstChild);
+  const sceneG = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+  camera.position.set(0, 0, 6.2);
+  sceneG.add(new THREE.HemisphereLight(0xfff6e6, 0x14342f, 0.95));
+  const dl = new THREE.DirectionalLight(0xffffff, .75); dl.position.set(3,5,6); sceneG.add(dl);
+  const dl2 = new THREE.DirectionalLight(0xffe0b8, .25); dl2.position.set(-4,-2,-5); sceneG.add(dl2);
+  const cube = new THREE.Group(); sceneG.add(cube);
+  cube.quaternion.setFromEuler(new THREE.Euler(0.42, -0.62, 0));
+  cube.add(new THREE.Mesh(new THREE.BoxGeometry(2.02,2.02,2.02),
+           new THREE.MeshLambertMaterial({color:0x0a2724})));
+  function sizeCube(){
+    const w=pane.clientWidth, h=pane.clientHeight;
+    camera.aspect=w/h; camera.updateProjectionMatrix();
+    renderer.setSize(w,h);
+  }
+
+  // ---- cells + adjacency ----
+  const AX=['x','y','z'], cells=[];
+  const key = v => v.toArray().map(n=>n.toFixed(2)).join(',');
+  AX.forEach((axis,ai)=>[1,-1].forEach(sign=>{
+    const u=AX[(ai+1)%3], v=AX[(ai+2)%3];
+    const normal=new THREE.Vector3(); normal[axis]=sign;
+    [-0.5,0.5].forEach(a=>[-0.5,0.5].forEach(b=>{
+      const c=new THREE.Vector3(); c[axis]=sign; c[u]=a; c[v]=b;
+      const mids=[[u,.5],[u,-.5],[v,.5],[v,-.5]].map(([x2,d])=>{const m=c.clone();m[x2]+=d;return m;});
+      cells.push({id:cells.length, center:c, normal, mids, midKeys:mids.map(key), num:null, badge:null});
+    }));
+  }));
+  const midMap={};
+  cells.forEach(c=>c.midKeys.forEach(k=>(midMap[k]=midMap[k]||[]).push(c.id)));
+  cells.forEach(c=>{
+    c.nbrs=c.midKeys.map((k,i)=>{const p=midMap[k];return{id:p[0]===c.id?p[1]:p[0],mid:c.mids[i]};});
+    c.nbrIds=c.nbrs.map(n=>n.id);
+  });
+  const sharedMid=(a,b)=>a.nbrs.find(n=>n.id===b.id).mid;
+
+  function roundedTile(size,r){
+    const s=size/2, sh=new THREE.Shape();
+    sh.moveTo(-s+r,-s); sh.lineTo(s-r,-s); sh.quadraticCurveTo(s,-s,s,-s+r);
+    sh.lineTo(s,s-r); sh.quadraticCurveTo(s,s,s-r,s);
+    sh.lineTo(-s+r,s); sh.quadraticCurveTo(-s,s,-s,s-r);
+    sh.lineTo(-s,-s+r); sh.quadraticCurveTo(-s,-s,-s+r,-s);
+    return new THREE.ShapeGeometry(sh,6);
+  }
+  const tileGeo=roundedTile(0.9,0.12);
+  const IVORY=new THREE.Color(0xefe6cf), PEACH=new THREE.Color(0xffc98f),
+        HOT=new THREE.Color(0xa34b1e), BADC=new THREE.Color(0xe04f3f);
+  cells.forEach(c=>{
+    const m=new THREE.Mesh(tileGeo,new THREE.MeshLambertMaterial({color:IVORY.clone()}));
+    m.position.copy(c.center).addScaledVector(c.normal,0.015);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),c.normal);
+    m.userData.cellId=c.id;
+    cube.add(m); c.mesh=m;
+  });
+  const tileMeshes=cells.map(c=>c.mesh);
+  function badgeTexture(n,isLast){
+    const cv=document.createElement('canvas'); cv.width=cv.height=128;
+    const g=cv.getContext('2d');
+    g.beginPath(); g.arc(64,64,54,0,Math.PI*2);
+    g.fillStyle=isLast?'#ff6b2c':'#1b2b28'; g.fill();
+    g.lineWidth=7; g.strokeStyle='#efe6cf'; g.stroke();
+    g.fillStyle='#efe6cf'; g.font='700 60px "Space Grotesk",sans-serif';
+    g.textAlign='center'; g.textBaseline='middle'; g.fillText(n,64,68);
+    const t=new THREE.CanvasTexture(cv); t.anisotropy=4; return t;
+  }
+  const badgeGeo=new THREE.PlaneGeometry(0.5,0.5);
+
+  // ---- net mapping ----
+  function netCoord(c){
+    const p=c.center, n=c.normal;
+    let bc, br, rx, ry;
+    if(n.z===1){ bc=1; br=1; rx=p.x;  ry=p.y; }
+    else if(n.x===1){ bc=2; br=1; rx=-p.z; ry=p.y; }
+    else if(n.z===-1){ bc=3; br=1; rx=-p.x; ry=p.y; }
+    else if(n.x===-1){ bc=0; br=1; rx=p.z;  ry=p.y; }
+    else if(n.y===1){ bc=1; br=2; rx=p.x;  ry=-p.z; }
+    else            { bc=1; br=0; rx=p.x;  ry=p.z; }
+    return { cx: bc*2+(rx+0.5), cy: br*2+(ry+0.5) };
+  }
+  const netMap={};
+  cells.forEach(c=>{ c.net=netCoord(c); netMap[c.net.cx+','+c.net.cy]=c; });
+  const FACE_TAGS=[ {t:'R',bc:2,br:1},{t:'L',bc:0,br:1},{t:'U',bc:1,br:2},
+                    {t:'D',bc:1,br:0},{t:'F',bc:1,br:1},{t:'B',bc:3,br:1} ];
+
+  // ---- puzzle ----
+  const N=6;
+  let numByCell, startCell;
+  function hamiltonianPath(){
+    for(let a=0;a<60;a++){
+      const start=Math.floor(Math.random()*24);
+      const p=[start], used=new Set([start]);
+      let steps=0, ok=true;
+      const deg=id=>cells[id].nbrIds.filter(n=>!used.has(n)).length;
+      while(p.length<24){
+        if(++steps>4000){ok=false;break;}
+        const head=p[p.length-1];
+        let o=cells[head].nbrIds.filter(n=>!used.has(n));
+        if(!o.length){used.delete(p.pop()); if(!p.length){ok=false;break;} continue;}
+        for(let i=o.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[o[i],o[j]]=[o[j],o[i]];}
+        o.sort((x,y)=>deg(x)-deg(y));
+        p.push(o[Math.random()<0.75?0:Math.floor(Math.random()*o.length)]);
+        used.add(p[p.length-1]);
+      }
+      if(ok&&p.length===24) return p;
+    }
+    return null;
+  }
+  function makePuzzle(){
+    let sol=hamiltonianPath();
+    while(!sol) sol=hamiltonianPath();
+    const idxs=[0];
+    for(let k=1;k<N-1;k++){
+      let i=Math.round(k*23/(N-1));
+      i=Math.max(idxs[idxs.length-1]+2, Math.min(21,i));
+      idxs.push(i);
+    }
+    idxs.push(23);
+    numByCell={};
+    cells.forEach(c=>{c.num=null; if(c.badge){
+      cube.remove(c.badge); c.badge.material.map.dispose(); c.badge.material.dispose(); c.badge=null;
+    }});
+    idxs.forEach((pi,k)=>{
+      const c=cells[sol[pi]]; c.num=k+1; numByCell[c.id]=k+1;
+      const b=new THREE.Mesh(badgeGeo,new THREE.MeshBasicMaterial({
+        map:badgeTexture(k+1,k+1===N),transparent:true,depthWrite:false}));
+      b.position.copy(c.center).addScaledVector(c.normal,0.03);
+      b.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),c.normal);
+      cube.add(b); c.badge=b;
+    });
+    startCell=sol[0];
+    cells.forEach(c=>{
+      c.order=[...c.nbrIds];
+      for(let i=c.order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[c.order[i],c.order[j]]=[c.order[j],c.order[i]];}
+    });
+  }
+
+  // ================= SHARED STATE =================
+  let mode='play';
+  let path=[], heat=new Uint32Array(24), solvedNow=false;
+  let flash={id:-1, until:0};
+  let viewsDirty=true, lastLog='';
+  const log = m => { lastLog=m; $('logline').textContent=m; };
+  const nextExpected = p => {
+    let m=0; p.forEach(id=>{ if(numByCell[id]) m=Math.max(m,numByCell[id]); });
+    return m+1;
+  };
+
+  // ---- cube path rendering ----
+  const pathGroup=new THREE.Group(); cube.add(pathGroup);
+  const segGeo=new THREE.CylinderGeometry(0.075,0.075,1,10);
+  const dotGeo=new THREE.SphereGeometry(0.1,14,12);
+  const headGeo=new THREE.SphereGeometry(0.14,16,14);
+  const jointGeo=new THREE.SphereGeometry(0.075,10,8);
+  const pathMat=new THREE.MeshLambertMaterial({color:0xff6b2c});
+  let headMesh=null;
+  function resetRunState(){ heat=new Uint32Array(24); solvedNow=false; pathMat.color.set(0xff6b2c); }
+  const lift=c=>c.center.clone().addScaledVector(c.normal,0.09);
+  function seg3(a,b){
+    const m=new THREE.Mesh(segGeo,pathMat);
+    const d=b.clone().sub(a);
+    m.scale.y=d.length();
+    m.position.copy(a).addScaledVector(d,0.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());
+    pathGroup.add(m);
+  }
+  function drawCubePath(){
+    pathGroup.clear();
+    headMesh=null;
+    for(let i=0;i<path.length;i++){
+      const c=cells[path[i]], p=lift(c);
+      const dot=new THREE.Mesh(i===path.length-1?headGeo:dotGeo,pathMat);
+      dot.position.copy(p); pathGroup.add(dot);
+      if(i===path.length-1) headMesh=dot;
+      if(i>0){
+        const pr=cells[path[i-1]], pp=lift(pr);
+        if(pr.normal.equals(c.normal)) seg3(pp,p);
+        else{
+          const m=sharedMid(pr,c).clone()
+            .addScaledVector(pr.normal.clone().add(c.normal).normalize(),0.09);
+          seg3(pp,m); seg3(m,p);
+          const j=new THREE.Mesh(jointGeo,pathMat); j.position.copy(m); pathGroup.add(j);
+        }
+      }
+    }
+  }
+  const tileColor=id=>{
+    if(flash.id===id && performance.now()<flash.until) return BADC;
+    if(path.includes(id)) return PEACH;
+    const h=Math.min(1, Math.log2(1+heat[id])/6);
+    return IVORY.clone().lerp(HOT,h);
+  };
+  function refreshTiles(){ cells.forEach(c=>c.mesh.material.color.copy(tileColor(c.id))); }
+
+  // ---- net (mini-map) rendering ----
+  const nCv=$('netCanvas'), nCtx=nCv.getContext('2d');
+  const netPane=$('netPane');
+  let NM={cs:20, ox:0, oy:0};
+  function sizeNet(){
+    nCv.width=netPane.clientWidth*devicePixelRatio;
+    nCv.height=netPane.clientHeight*devicePixelRatio;
+    const w=netPane.clientWidth, h=netPane.clientHeight;
+    NM.cs=Math.min((w-12)/8,(h-12)/6);
+    NM.ox=(w-NM.cs*8)/2; NM.oy=(h-NM.cs*6)/2;
+  }
+  const netPx=c=>({ x:NM.ox+(c.net.cx+0.5)*NM.cs, y:NM.oy+(5-c.net.cy+0.5)*NM.cs });
+  function netHit(px,py){
+    const cx=Math.floor((px-NM.ox)/NM.cs), r=Math.floor((py-NM.oy)/NM.cs);
+    return netMap[cx+','+(5-r)] || null;
+  }
+  function rr(g,x,y,w,h,r){
+    g.beginPath();
+    g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r);
+    g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath();
+  }
+  function drawNet(){
+    const g=nCtx, dpr=devicePixelRatio;
+    g.setTransform(1,0,0,1,0,0);
+    g.clearRect(0,0,nCv.width,nCv.height);
+    g.setTransform(dpr,0,0,dpr,0,0);
+    const cs=NM.cs, pad=cs*0.06;
+    cells.forEach(c=>{
+      const p=netPx(c);
+      g.fillStyle='#'+tileColor(c.id).getHexString();
+      rr(g, p.x-cs/2+pad, p.y-cs/2+pad, cs-2*pad, cs-2*pad, cs*0.14);
+      g.fill();
+    });
+    g.fillStyle='rgba(239,230,207,0.4)';
+    g.font=`700 ${Math.max(6,cs*0.28)}px "Space Grotesk",sans-serif`;
+    g.textAlign='left'; g.textBaseline='top';
+    FACE_TAGS.forEach(f=>{
+      g.fillText(f.t, NM.ox+f.bc*2*cs+cs*0.12, NM.oy+(5-(f.br*2+1))*cs+cs*0.08);
+    });
+    if(path.length){
+      const pc = solvedNow ? '#5fd68b' : '#ff6b2c';
+      g.lineCap='round'; g.lineJoin='round';
+      for(let i=1;i<path.length;i++){
+        const a=netPx(cells[path[i-1]]), b=netPx(cells[path[i]]);
+        const d=Math.hypot(b.x-a.x,b.y-a.y);
+        if(d < cs*1.5){
+          g.strokeStyle=pc; g.lineWidth=Math.max(2,cs*0.22); g.setLineDash([]);
+          g.beginPath(); g.moveTo(a.x,a.y); g.lineTo(b.x,b.y); g.stroke();
+        } else {
+          const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+          const nx=-(b.y-a.y)/d, ny=(b.x-a.x)/d;
+          g.strokeStyle=pc+'99'; g.lineWidth=Math.max(1.4,cs*0.12);
+          g.setLineDash([cs*0.18, cs*0.16]);
+          g.beginPath(); g.moveTo(a.x,a.y);
+          g.quadraticCurveTo(mx+nx*cs*1.1, my+ny*cs*1.1, b.x, b.y);
+          g.stroke(); g.setLineDash([]);
+        }
+      }
+      g.fillStyle=pc;
+      path.forEach((id,i)=>{
+        const p=netPx(cells[id]);
+        g.beginPath(); g.arc(p.x,p.y, i===path.length-1?cs*0.2:cs*0.12, 0,Math.PI*2); g.fill();
+      });
+      const hp=netPx(cells[path[path.length-1]]);
+      g.strokeStyle='#ffe3c2'; g.lineWidth=1.6;
+      g.beginPath(); g.arc(hp.x,hp.y,cs*0.3,0,Math.PI*2); g.stroke();
+    }
+    cells.forEach(c=>{
+      if(!c.num) return;
+      const p=netPx(c), r=cs*0.26;
+      g.beginPath(); g.arc(p.x,p.y,r,0,Math.PI*2);
+      g.fillStyle=c.num===N?'#ff6b2c':'#1b2b28'; g.fill();
+      g.lineWidth=Math.max(1,cs*0.05); g.strokeStyle='#efe6cf'; g.stroke();
+      g.fillStyle='#efe6cf';
+      g.font=`700 ${Math.max(7,cs*0.32)}px "Space Grotesk",sans-serif`;
+      g.textAlign='center'; g.textBaseline='middle';
+      g.fillText(c.num, p.x, p.y+0.5);
+    });
+  }
+  $('netExpand').onclick=()=>{
+    netPane.classList.toggle('big');
+    $('netExpand').textContent=netPane.classList.contains('big')?'⤡':'⤢';
+    setTimeout(()=>{ sizeNet(); viewsDirty=true; }, 200);
+  };
+
+  // ================= GAME MOVES (user) =================
+  function doFlash(id, msg){
+    flash={id, until:performance.now()+280};
+    viewsDirty=true;
+    setTimeout(()=>{viewsDirty=true;}, 300);
+    if(msg) log(msg);
+  }
+  function tryExtend(cell){
+    if(mode!=='play') return false;
+    const head=cells[path[path.length-1]];
+    if(path.includes(cell.id)) return false;
+    if(!head.nbrIds.includes(cell.id)) return false;
+    const exp=nextExpected(path);
+    if(cell.num){
+      if(cell.num!==exp){ doFlash(cell.id, `reach ${exp} first`); return false; }
+      if(cell.num===N && path.length!==23){ doFlash(cell.id, `${N} must be your last cell`); return false; }
+    }
+    path.push(cell.id);
+    viewsDirty=true; updateHud();
+    if(path.length===24) userWin();
+    return true;
+  }
+  function truncateTo(cell){
+    if(mode!=='play') return;
+    const i=path.indexOf(cell.id);
+    if(i<0||i===path.length-1) return;
+    path=path.slice(0,i+1);
+    viewsDirty=true; updateHud();
+  }
+  function popOne(){ if(path.length>1){ path.pop(); viewsDirty=true; updateHud(); } }
+  function dragDraw(cell){
+    if(!cell) return;
+    if(path.length>1 && cell.id===path[path.length-2]) popOne();
+    else tryExtend(cell);
+  }
+  function tapCell(cell){
+    if(!cell) return;
+    if(path.includes(cell.id)) truncateTo(cell);
+    else if(!tryExtend(cell) && !cells[path[path.length-1]].nbrIds.includes(cell.id))
+      log('only cells next to the path end');
+  }
+  function userWin(){
+    $('winStats').textContent=`All 24 cells, 1 → ${N}, drawn by hand across three dimensions.`;
+    $('win').classList.add('show');
+  }
+
+  // ================= SOLVER =================
+  const CAP=120000;
+  let trace=null, traceStats=null, basePath=[];
+  function connectedOK(visited, head){
+    const un=24-visited.size;
+    if(!un) return true;
+    const seen=new Uint8Array(24), st=[];
+    cells[head].nbrIds.forEach(n=>{if(!visited.has(n)){seen[n]=1;st.push(n);}});
+    let cnt=st.length;
+    while(st.length){
+      const c=st.pop();
+      cells[c].nbrIds.forEach(n=>{if(!visited.has(n)&&!seen[n]){seen[n]=1;cnt++;st.push(n);}});
+    }
+    return cnt===un;
+  }
+  function buildTrace(prune, base){
+    const ev=[], stats={push:0,pop:0,prune:0,rej:0,solved:false,capped:false};
+    const visited=new Set(base);
+    const head0=base[base.length-1];
+    if(base.length===24){ ev.push([3,head0]); stats.solved=true; return {ev,stats}; }
+    if(prune && !connectedOK(visited, head0)){ ev.push([4,head0]); return {ev,stats}; }
+    let done=false;
+    function dfs(head, expected, depth){
+      if(done) return true;
+      if(ev.length>CAP){stats.capped=true;done=true;return false;}
+      if(depth===24){ev.push([3,head]);stats.solved=true;done=true;return true;}
+      for(const nb of cells[head].order){
+        if(done) return true;
+        if(visited.has(nb)) continue;
+        const num=numByCell[nb];
+        if(num&&num!==expected){stats.rej++;continue;}
+        if(num===N&&depth!==23){stats.rej++;continue;}
+        visited.add(nb); ev.push([0,nb]); stats.push++;
+        if(prune&&!connectedOK(visited,nb)){
+          ev.push([2,nb]); stats.prune++; visited.delete(nb); continue;
+        }
+        if(dfs(nb, num?expected+1:expected, depth+1)) return true;
+        visited.delete(nb); ev.push([1,nb]); stats.pop++;
+      }
+      return false;
+    }
+    dfs(head0, nextExpected(base), base.length);
+    if(!stats.solved) ev.push([4,head0]);
+    return {ev,stats};
+  }
+
+  // ---- search tree ----
+  const tCv=$('treeCanvas'), tCtx=tCv.getContext('2d');
+  const treePane=$('treePane');
+  const DX=15, DY=25;
+  let nSlot=[], nDepth=[], nParent=[], nCell=[], nState=[], nKids=[];
+  let stackN=[], leafX=0, headNode=-1;
+  const COL={1:'#ff6b2c',2:'#4a625d',3:'#2fbf9f',4:'#8df2b0'};
+  let view={s:0.9, ox:40, oy:26}, follow=true, treeDirty=true;
+
+  function resetTreeData(){
+    nSlot=[];nDepth=[];nParent=[];nCell=[];nState=[];nKids=[];
+    stackN=[];leafX=0;headNode=-1;treeDirty=true;
+  }
+  function treePush(cellId){
+    const parent=stackN.length?stackN[stackN.length-1]:-1;
+    if(parent>=0) nKids[parent]++;
+    const i=nSlot.length;
+    nSlot.push(leafX); nDepth.push(stackN.length); nParent.push(parent);
+    nCell.push(cellId); nState.push(1); nKids.push(0);
+    stackN.push(i); headNode=i; treeDirty=true;
+  }
+  function treeClose(state){
+    const i=stackN.pop();
+    nState[i]=state;
+    if(nKids[i]===0) leafX++;
+    headNode=stackN.length?stackN[stackN.length-1]:-1;
+    treeDirty=true;
+  }
+  function treeSolved(){ stackN.forEach(i=>nState[i]=4); treeDirty=true; }
+  function sizeTree(){
+    tCv.width=treePane.clientWidth*devicePixelRatio;
+    tCv.height=treePane.clientHeight*devicePixelRatio;
+    view.s=Math.min(0.95,Math.max(0.2,(treePane.clientHeight-36)/(24*DY)));
+    view.oy=22; view.ox=40; treeDirty=true;
+  }
+  function lowerBound(arr,val){
+    let lo=0, hi=arr.length;
+    while(lo<hi){const m=(lo+hi)>>1; if(arr[m]<val) lo=m+1; else hi=m;}
+    return lo;
+  }
+  function drawTree(){
+    const dpr=devicePixelRatio, W=tCv.width;
+    tCtx.setTransform(1,0,0,1,0,0);
+    tCtx.clearRect(0,0,W,tCv.height);
+    tCtx.setTransform(dpr,0,0,dpr,0,0);
+    if(!nSlot.length) return;
+    const s=view.s, dx=DX*s, dy=DY*s;
+    const X=i=>view.ox+nSlot[i]*dx, Y=i=>view.oy+nDepth[i]*dy;
+    const minSlot=(-view.ox-10)/dx, maxSlot=(W/dpr-view.ox+10)/dx;
+    const i0=lowerBound(nSlot,minSlot), i1=lowerBound(nSlot,maxSlot+1);
+    const count=i1-i0;
+    const step=count>15000?Math.ceil(count/15000):1;
+    const r=Math.max(1.4, 4.6*s);
+    if(count<6000 && s>0.18){
+      tCtx.strokeStyle='rgba(239,230,207,0.28)';
+      tCtx.lineWidth=Math.max(0.6,1.3*s);
+      tCtx.beginPath();
+      for(let i=i0;i<i1;i++){
+        const p=nParent[i]; if(p<0) continue;
+        tCtx.moveTo(X(p),Y(p)); tCtx.lineTo(X(i),Y(i));
+      }
+      tCtx.stroke();
+    }
+    for(const st of [2,3,1,4]){
+      tCtx.fillStyle=COL[st];
+      tCtx.beginPath();
+      for(let i=i0;i<i1;i+=step){
+        if(nState[i]!==st) continue;
+        const x=X(i), y=Y(i);
+        if(r<2.2) tCtx.rect(x-r,y-r,r*2,r*2);
+        else{ tCtx.moveTo(x+r,y); tCtx.arc(x,y,r,0,Math.PI*2); }
+      }
+      tCtx.fill();
+    }
+    if(dx>9){
+      tCtx.fillStyle='#071f1d';
+      tCtx.font=`700 ${Math.max(7,8.5*s*1.4)}px "Space Mono",monospace`;
+      tCtx.textAlign='center'; tCtx.textBaseline='middle';
+      for(let i=i0;i<i1;i++){
+        const num=numByCell[nCell[i]];
+        if(num) tCtx.fillText(num, X(i), Y(i)+0.5);
+      }
+    }
+    if(headNode>=i0 && headNode<i1){
+      tCtx.strokeStyle='#ffe3c2'; tCtx.lineWidth=2;
+      tCtx.beginPath(); tCtx.arc(X(headNode),Y(headNode),r+3.5,0,Math.PI*2); tCtx.stroke();
+    }
+  }
+
+  // ---- playback ----
+  let ptr=0, playing=false;
+  const live={push:0,pop:0,prune:0};
+  const label=id=>numByCell[id]?`cell ${id} [#${numByCell[id]}]`:`cell ${id}`;
+  function applyEvent(e){
+    const [t,id]=e;
+    if(t===0){ path.push(id); heat[id]++; live.push++; treePush(id);
+      lastLog=`→ push ${label(id)} (depth ${path.length})`; }
+    else if(t===1){ path.pop(); live.pop++; treeClose(2);
+      lastLog=`↩ dead end — backtrack from ${label(id)}`; }
+    else if(t===2){ path.pop(); live.prune++; treeClose(3);
+      lastLog=`✂ pruned ${label(id)} — region cut off`; }
+    else if(t===3){ treeSolved(); solvedNow=true; pathMat.color.set(0x5fd68b); playing=false;
+      lastLog=`★ solved — ${live.push} pushes, ${live.pop} backtracks, ${live.prune} prunes`; }
+    else if(t===4){ playing=false;
+      lastLog=traceStats.capped ? `⏹ stopped at cap (${CAP.toLocaleString()})`
+        : (basePath.length>1 ? '✕ no path from your position — undo a few moves' : '✕ exhausted — no path'); }
+    viewsDirty=true;
+  }
+  function resetPlayback(){
+    path=basePath.slice(); ptr=0; playing=false;
+    live.push=live.pop=live.prune=0;
+    resetRunState();
+    resetTreeData(); treePush(basePath[basePath.length-1]);
+    viewsDirty=true; updateHud();
+  }
+  function rebuildTrace(){
+    const r=buildTrace($('pruneChk').checked, basePath);
+    trace=r.ev; traceStats=r.stats;
+    resetPlayback();
+    log(`trace from depth ${basePath.length}: ${trace.length.toLocaleString()} events · `
+      +(traceStats.solved?'finds a solution':'NO path from here')
+      +(traceStats.capped?' (capped)':''));
+    updateHud();
+  }
+
+  // ================= MODE SWITCH =================
+  function setMode(m){
+    if(m===mode) return;
+    if(m==='solver'){
+      mode='solver';
+      basePath=path.slice();
+      document.body.className='solver';
+      $('modeTag').textContent='ai solver — dfs from your position';
+      $('modePlay').classList.remove('active'); $('modeSolver').classList.add('active');
+      sizeCube(); sizeNet(); sizeTree();
+      rebuildTrace();
+    } else {
+      mode='play'; playing=false;
+      path=basePath.slice();
+      resetRunState();
+      document.body.className='play';
+      $('modeTag').textContent='play — draw on the cube';
+      $('modeSolver').classList.remove('active'); $('modePlay').classList.add('active');
+      sizeCube(); sizeNet();
+      log('your board is back — the AI kept its hands off');
+      viewsDirty=true; updateHud();
+    }
+  }
+  $('modePlay').onclick=()=>setMode('play');
+  $('modeSolver').onclick=()=>setMode('solver');
+
+  function updateHud(){
+    if(mode==='play'){
+      const exp=nextExpected(path);
+      $('pNext').textContent=exp>N?'✓':exp;
+      $('pFilled').textContent=path.length;
+    } else {
+      $('sPush').textContent=live.push;
+      $('sPop').textContent=live.pop;
+      $('sPrune').textContent=live.prune;
+      $('sDepth').textContent=path.length;
+      $('progressFill').style.width=(trace?100*ptr/trace.length:0)+'%';
+      $('playBtn').textContent=playing?'⏸ Pause':'▶ Play';
+    }
+    $('logline').textContent=lastLog;
+  }
+
+  // ---- controls ----
+  $('undoBtn').onclick=popOne;
+  $('resetBtn').onclick=()=>{ path=[startCell]; viewsDirty=true; updateHud(); };
+  $('newBtn').onclick=()=>{
+    makePuzzle(); path=[startCell]; basePath=[startCell];
+    resetRunState();
+    $('win').classList.remove('show');
+    if(mode==='solver') rebuildTrace(); else { log('new puzzle — start at 1'); viewsDirty=true; updateHud(); }
+  };
+  $('againBtn').onclick=()=>$('newBtn').onclick();
+  $('playBtn').onclick=()=>{ if(ptr>=trace.length) resetPlayback(); playing=!playing; updateHud(); };
+  $('stepBtn').onclick=()=>{ playing=false; if(ptr<trace.length) applyEvent(trace[ptr++]); updateHud(); };
+  $('restartBtn').onclick=resetPlayback;
+  $('pruneChk').onchange=()=>{ if(mode==='solver') rebuildTrace(); };
+  const speedEl=$('speed');
+  const evPerSec=()=>Math.round(Math.pow(10, 0.3+(speedEl.value/100)*3.2));
+  function setFollow(v){ follow=v; $('followBtn').classList.toggle('on',v); }
+  $('followBtn').onclick=()=>setFollow(!follow);
+
+  // ================= POINTER: CUBE =================
+  const ray=new THREE.Raycaster(), ndcV=new THREE.Vector2();
+  function pickCell(x,y){
+    const r=renderer.domElement.getBoundingClientRect();
+    ndcV.set(((x-r.left)/r.width)*2-1, -((y-r.top)/r.height)*2+1);
+    ray.setFromCamera(ndcV, camera);
+    const hit=ray.intersectObjects(tileMeshes)[0];
+    return hit?cells[hit.object.userData.cellId]:null;
+  }
+  let cDown=null, cMode=null, cMoved=false;
+  renderer.domElement.addEventListener('pointerdown',e=>{
+    cDown={x:e.clientX,y:e.clientY}; cMoved=false;
+    const c=pickCell(e.clientX,e.clientY);
+    cMode=(mode==='play' && c && c.id===path[path.length-1])?'draw':'rotate';
+    renderer.domElement.setPointerCapture(e.pointerId);
+  });
+  renderer.domElement.addEventListener('pointermove',e=>{
+    if(!cDown) return;
+    const dx=e.clientX-cDown.x, dy=e.clientY-cDown.y;
+    if(Math.hypot(dx,dy)>7) cMoved=true;
+    if(cMode==='rotate'){
+      const q=new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(dy,dx,0).normalize(), Math.hypot(dx,dy)*0.0075);
+      cube.quaternion.premultiply(q);
+      cDown={x:e.clientX,y:e.clientY};
+    } else {
+      dragDraw(pickCell(e.clientX,e.clientY));
+    }
+  });
+  renderer.domElement.addEventListener('pointerup',e=>{
+    if(cDown && !cMoved && mode==='play') tapCell(pickCell(e.clientX,e.clientY));
+    cDown=null; cMode=null;
+  });
+
+  // ================= POINTER: NET (mini-map) =================
+  let nDown=null, nDraw=false, nMoved=false;
+  function netXY(e){
+    const r=netPane.getBoundingClientRect();
+    return {x:e.clientX-r.left, y:e.clientY-r.top};
+  }
+  nCv.addEventListener('pointerdown',e=>{
+    if(mode!=='play') return;
+    const p=netXY(e);
+    nDown=p; nMoved=false;
+    const c=netHit(p.x,p.y);
+    nDraw=!!(c && c.id===path[path.length-1]);
+    nCv.setPointerCapture(e.pointerId);
+  });
+  nCv.addEventListener('pointermove',e=>{
+    if(!nDown||mode!=='play') return;
+    const p=netXY(e);
+    if(Math.hypot(p.x-nDown.x,p.y-nDown.y)>7) nMoved=true;
+    if(!nDraw) return;
+    dragDraw(netHit(p.x,p.y));
+  });
+  nCv.addEventListener('pointerup',e=>{
+    if(nDown && !nMoved && mode==='play'){
+      const p=netXY(e);
+      tapCell(netHit(p.x,p.y));
+    }
+    nDown=null; nDraw=false;
+  });
+
+  // ================= POINTER: TREE =================
+  const ptrs=new Map(); let pinchD=0;
+  tCv.addEventListener('pointerdown',e=>{
+    ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(ptrs.size===2){
+      const a=[...ptrs.values()];
+      pinchD=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
+    }
+    tCv.setPointerCapture(e.pointerId);
+  });
+  tCv.addEventListener('pointermove',e=>{
+    if(!ptrs.has(e.pointerId)) return;
+    const prev=ptrs.get(e.pointerId);
+    ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(ptrs.size===1){
+      view.ox+=e.clientX-prev.x; view.oy+=e.clientY-prev.y;
+      setFollow(false); treeDirty=true;
+    } else if(ptrs.size===2){
+      const a=[...ptrs.values()];
+      const d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
+      const rect=treePane.getBoundingClientRect();
+      zoomAt((a[0].x+a[1].x)/2-rect.left,(a[0].y+a[1].y)/2-rect.top, d/(pinchD||d));
+      pinchD=d;
+    }
+  });
+  const clearPtr=e=>ptrs.delete(e.pointerId);
+  tCv.addEventListener('pointerup',clearPtr);
+  tCv.addEventListener('pointercancel',clearPtr);
+  tCv.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const rect=treePane.getBoundingClientRect();
+    zoomAt(e.clientX-rect.left,e.clientY-rect.top, e.deltaY<0?1.12:0.89);
+  },{passive:false});
+  function zoomAt(px,py,f){
+    const s2=Math.max(0.06,Math.min(3.5,view.s*f));
+    const k=s2/view.s;
+    view.ox=px-(px-view.ox)*k; view.oy=py-(py-view.oy)*k;
+    view.s=s2; setFollow(false); treeDirty=true;
+  }
+
+  addEventListener('resize',()=>{ sizeCube(); sizeNet(); if(mode==='solver') sizeTree(); viewsDirty=true; });
+
+  // ================= LOOP =================
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const clock=new THREE.Clock();
+  let acc=0, lastTreeDraw=0;
+  function loop(){
+    requestAnimationFrame(loop);
+    const dt=Math.min(clock.getDelta(),0.1), t=clock.elapsedTime;
+    if(mode==='solver' && playing && trace){
+      acc+=evPerSec()*dt;
+      let n=Math.floor(acc); acc-=n;
+      while(n-->0&&ptr<trace.length) applyEvent(trace[ptr++]);
+      if(ptr>=trace.length) playing=false;
+      updateHud();
+    }
+    if(viewsDirty){ drawCubePath(); refreshTiles(); drawNet(); viewsDirty=false; }
+    if(mode==='solver'){
+      if(follow&&headNode>=0){
+        const targetX=treePane.clientWidth*0.6 - nSlot[headNode]*DX*view.s;
+        view.ox+=(targetX-view.ox)*0.15;
+        if(Math.abs(targetX-view.ox)>0.5) treeDirty=true;
+      }
+      if(treeDirty && t-lastTreeDraw>0.05){ drawTree(); treeDirty=false; lastTreeDraw=t; }
+    }
+    if(!cDown&&!reduce) cube.rotation.y+=0.0012;
+    if(headMesh) headMesh.scale.setScalar(1+Math.sin(t*4)*0.12);
+    renderer.render(sceneG,camera);
+  }
+
+  makePuzzle();
+  path=[startCell]; basePath=[startCell];
+  sizeCube(); sizeNet(); sizeTree();
+  log('draw on the cube — the mini net helps you peek around back');
+  updateHud(); loop();
+})();
+</script>
+</body>
+</html>
