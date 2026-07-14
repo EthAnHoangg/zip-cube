@@ -19,6 +19,10 @@ All state and logic live inside the single IIFE in the `<script>` block. The boa
 - `cells[]` (24 entries) is built geometrically: each cell has a `center` and `normal` Vector3. Adjacency (`nbrIds`) is derived by hashing edge-midpoint coordinates (`midMap`) — two cells sharing a midpoint are neighbors, which makes adjacency work seamlessly *across cube edges*, not just within a face.
 - Each cell also carries its 3D mesh (`c.mesh`, `c.badge`), its 2D net coordinate (`c.net` via `netCoord()`, a cross-shaped unfolding into an 8×6 grid), and a randomized neighbor order (`c.order`) used by the solver so traces differ per puzzle.
 
+### Design tokens (theming)
+
+Every color is a semantic CSS custom property on `:root` (dark) overridden by `body.light` — including the 3D/canvas colors (`--cube-body`, `--tile*`, `--path*`, `--badge-*`, `--tree-*`). JS never hardcodes a color: `readTokens()` caches the tokens into `T` (THREE.Color for 3D, strings for canvas) once per theme switch, and `applyTheme()` retints materials, rebuilds badge textures (`rebuildBadges()` — colors are baked into canvas textures), and marks views dirty. Alpha-composed colors use triplet tokens (`rgba(var(--fg-rgb),.NN)`). Adding a theme = one CSS override block, zero JS changes. Mode switching must use `classList` (not `className=`) so the `light` class survives.
+
 ### Two modes, shared state
 
 `mode` is `'play'` or `'solver'`; `document.body.className` mirrors it and CSS (`.playOnly`/`.solverOnly`) swaps the UI. The current path is `path[]` (array of cell ids). Entering solver mode snapshots the player's path into `basePath` and the solver searches *from that position*; returning to play mode restores `basePath` untouched.

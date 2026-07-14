@@ -7,26 +7,55 @@
 <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@400;500;700&family=Space+Mono&display=swap" rel="stylesheet">
 <style>
   :root{
-    --felt:#0d3531; --felt-deep:#071f1d; --ink:#0a2724;
-    --ivory:#efe6cf; --tange:#ff6b2c; --peach:#ffc98f; --ok:#5fd68b; --bad:#e04f3f;
+    /* ---- design tokens: dark (default) ---- */
+    --fg-rgb:239,230,207;      /* dim text, borders, chip fills — rgba(var(--fg-rgb),.NN) */
+    --panel-rgb:7,31,29;       /* translucent panel backgrounds */
+    --ok-rgb:95,214,139;
+    --bg-hi:#0d3531; --bg-lo:#071f1d;
+    --text:#efe6cf; --log:#ffc98f;
+    --accent:#ff6b2c; --accent-ink:#1c0d04; --ok:#5fd68b;
+    --card:#efe6cf; --card-ink:#0a2724; --card-sub:#4a5a56;
+    /* canvas + 3D tokens, read by JS readTokens() — keep these hex */
+    --cube-body:#0a2724;
+    --tile:#efe6cf; --tile-path:#ffc98f; --tile-hot:#a34b1e; --tile-bad:#e04f3f;
+    --path:#ff6b2c; --path-solved:#5fd68b; --head-ring:#ffe3c2;
+    --badge-bg:#1b2b28; --badge-ink:#efe6cf;
+    --tree-active:#ff6b2c; --tree-back:#4a625d; --tree-prune:#2fbf9f; --tree-sol:#8df2b0; --tree-num:#071f1d;
+  }
+  body.light{
+    --fg-rgb:13,53,49;
+    --panel-rgb:247,240,221;
+    --ok-rgb:31,138,77;
+    --bg-hi:#f7f0dd; --bg-lo:#e8ddc0;
+    --text:#0d3531; --log:#a1571f;
+    --ok:#1f8a4d;
+    --card:#fffcf3;
+    --path-solved:#1f8a4d; --head-ring:#7a3d12;
+    --tree-back:#7f9089; --tree-prune:#177f69; --tree-sol:#238f55;
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{height:100%;overflow:hidden}
   body{
     font-family:'Space Grotesk',system-ui,sans-serif;
-    background:radial-gradient(120% 90% at 50% 20%, var(--felt) 0%, var(--felt-deep) 100%);
-    color:var(--ivory); touch-action:none; user-select:none;
+    background:radial-gradient(120% 90% at 50% 20%, var(--bg-hi) 0%, var(--bg-lo) 100%);
+    color:var(--text); touch-action:none; user-select:none;
     display:flex; flex-direction:column;
   }
-  header{display:flex;align-items:center;justify-content:space-between;padding:8px 14px 4px;flex:0 0 auto}
+  header{display:flex;align-items:center;justify-content:space-between;gap:4px 10px;
+    flex-wrap:wrap;padding:8px 14px 4px;flex:0 0 auto}
   .wordmark{font-family:'Bungee',cursive;font-size:18px}
-  .wordmark sup{color:var(--tange);font-size:11px}
+  .wordmark sup{color:var(--accent);font-size:11px}
   .wordmark small{display:block;font-family:'Space Grotesk';font-size:9.5px;letter-spacing:1.4px;
-    text-transform:uppercase;color:rgba(239,230,207,.55)}
+    text-transform:uppercase;color:rgba(var(--fg-rgb),.55)}
+  .hud{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap;justify-content:flex-end;
+    min-width:0;margin-left:auto}
+  #themeBtn{padding:2px 10px;font-size:14px;line-height:1;border-radius:9px;
+    background:rgba(var(--fg-rgb),.07);border:1px solid rgba(var(--fg-rgb),.16)}
   .stats{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
-  .stat{background:rgba(239,230,207,.07);border:1px solid rgba(239,230,207,.16);
-    border-radius:9px;padding:2px 8px;font-size:10px}
-  .stat b{display:block;font-family:'Space Mono',monospace;font-size:12.5px;color:var(--tange)}
+  .stat{background:rgba(var(--fg-rgb),.07);border:1px solid rgba(var(--fg-rgb),.16);
+    border-radius:9px;padding:2px 8px;font-size:10px;white-space:nowrap;text-align:center}
+  .stat b{display:block;font-family:'Space Mono',monospace;font-size:12.5px;color:var(--accent)}
+  .stat b span{font-size:12.5px}
   .stat.pr b{color:var(--ok)}
 
   /* ---- cube is the hero ---- */
@@ -38,8 +67,8 @@
   #netPane{
     position:absolute;bottom:10px;right:10px;z-index:4;
     width:min(46%,250px);aspect-ratio:8/6;
-    border:1px solid rgba(239,230,207,.18);border-radius:12px;
-    background:rgba(7,31,29,.72);backdrop-filter:blur(3px);
+    border:1px solid rgba(var(--fg-rgb),.18);border-radius:12px;
+    background:rgba(var(--panel-rgb),.72);backdrop-filter:blur(3px);
     box-shadow:0 8px 26px rgba(0,0,0,.35);
     transition:width .18s ease;
   }
@@ -47,21 +76,21 @@
   #netCanvas{position:absolute;inset:0;width:100%;height:100%;border-radius:12px}
   #netExpand{
     position:absolute;top:4px;right:4px;z-index:5;
-    font-size:11px;line-height:1;padding:5px 7px;border-radius:7px;
-    background:rgba(239,230,207,.1);border:1px solid rgba(239,230,207,.2);
+    font-size:11px;line-height:1;padding:6px 8px;border-radius:9px;
+    background:rgba(var(--fg-rgb),.1);border:1px solid rgba(var(--fg-rgb),.2);
   }
   .paneTag{position:absolute;top:6px;left:9px;font-size:9px;letter-spacing:1.2px;
-    text-transform:uppercase;color:rgba(239,230,207,.45);pointer-events:none;z-index:2}
+    text-transform:uppercase;color:rgba(var(--fg-rgb),.45);pointer-events:none;z-index:2}
 
   #logline{flex:0 0 auto;text-align:center;font-family:'Space Mono',monospace;font-size:11px;
-    color:var(--peach);padding:3px 12px;min-height:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    color:var(--log);padding:3px 12px;min-height:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #treePane{flex:1 1 auto;position:relative;margin:0 8px;
-    border:1px solid rgba(239,230,207,.14);border-radius:12px;background:rgba(7,31,29,.45);overflow:hidden}
+    border:1px solid rgba(var(--fg-rgb),.14);border-radius:12px;background:rgba(var(--panel-rgb),.45);overflow:hidden}
   body.play #treePane{display:none}
   #treeCanvas{position:absolute;inset:0;width:100%;height:100%}
-  .treeLegend{position:absolute;top:5px;left:9px;font-size:9.5px;color:rgba(239,230,207,.6);pointer-events:none}
+  .treeLegend{position:absolute;top:5px;left:9px;font-size:9.5px;color:rgba(var(--fg-rgb),.6);pointer-events:none}
   .treeLegend i{display:inline-block;width:7px;height:7px;border-radius:50%;margin:0 3px 0 7px;vertical-align:-1px}
-  #followBtn{position:absolute;bottom:7px;right:7px;font-size:10.5px;padding:5px 9px;border-radius:8px}
+  #followBtn{position:absolute;bottom:7px;right:7px;font-size:10.5px;padding:5px 9px;border-radius:9px}
 
   footer{flex:0 0 auto;display:flex;flex-direction:column;gap:6px;align-items:center;
     padding:7px 12px calc(8px + env(safe-area-inset-bottom))}
@@ -69,43 +98,46 @@
   body.play .solverOnly{display:none!important}
   body.solver .playOnly{display:none!important}
   button{font-family:inherit;font-size:12px;font-weight:700;padding:8px 12px;border-radius:10px;
-    border:1px solid rgba(239,230,207,.22);background:rgba(239,230,207,.07);color:var(--ivory);cursor:pointer}
+    border:1px solid rgba(var(--fg-rgb),.22);background:rgba(var(--fg-rgb),.07);color:var(--text);cursor:pointer}
   button:active{transform:scale(.96)}
-  button.primary{background:var(--tange);border-color:var(--tange);color:#1c0d04}
-  button.on{background:rgba(95,214,139,.2);border-color:var(--ok);color:var(--ok)}
-  button:focus-visible,input:focus-visible{outline:2px solid var(--tange);outline-offset:2px}
-  .seg{display:flex;border:1px solid rgba(239,230,207,.22);border-radius:11px;overflow:hidden}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  button.on{background:rgba(var(--ok-rgb),.2);border-color:var(--ok);color:var(--ok)}
+  button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .seg{display:flex;border:1px solid rgba(var(--fg-rgb),.22);border-radius:11px;overflow:hidden}
   .seg button{border:none;border-radius:0;background:transparent;padding:8px 14px}
-  .seg button.active{background:var(--tange);color:#1c0d04}
-  .speed{display:flex;align-items:center;gap:5px;font-size:10.5px;color:rgba(239,230,207,.7)}
-  input[type=range]{width:100px;accent-color:var(--tange)}
+  .seg button.active{background:var(--accent);color:var(--accent-ink)}
+  .speed{display:flex;align-items:center;gap:5px;font-size:10.5px;color:rgba(var(--fg-rgb),.7)}
+  input[type=range]{width:100px;accent-color:var(--accent)}
   .toggle{display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;
-    padding:7px 9px;border-radius:10px;border:1px solid rgba(239,230,207,.22);background:rgba(239,230,207,.05)}
+    padding:7px 9px;border-radius:10px;border:1px solid rgba(var(--fg-rgb),.22);background:rgba(var(--fg-rgb),.05)}
   .toggle input{accent-color:var(--ok);width:13px;height:13px}
-  #progress{width:min(420px,90vw);height:3px;border-radius:2px;background:rgba(239,230,207,.14);overflow:hidden}
-  #progressFill{height:100%;width:0%;background:var(--tange)}
+  #progress{width:min(420px,90vw);height:3px;border-radius:2px;background:rgba(var(--fg-rgb),.14);overflow:hidden}
+  #progressFill{height:100%;width:0%;background:var(--accent)}
   #win{position:fixed;inset:0;z-index:10;display:none;align-items:center;justify-content:center;
-    background:rgba(7,31,29,.78);backdrop-filter:blur(4px)}
+    background:rgba(var(--panel-rgb),.78);backdrop-filter:blur(4px)}
   #win.show{display:flex}
-  .card{background:var(--ivory);color:var(--ink);border-radius:20px;padding:26px 30px;
+  .card{background:var(--card);color:var(--card-ink);border-radius:20px;padding:26px 30px;
     text-align:center;max-width:290px;box-shadow:0 24px 60px rgba(0,0,0,.45)}
-  .card h2{font-family:'Bungee',cursive;font-size:26px;color:var(--tange);margin-bottom:6px}
-  .card p{font-size:13.5px;margin-bottom:16px;color:#4a5a56}
+  .card h2{font-family:'Bungee',cursive;font-size:26px;color:var(--accent);margin-bottom:6px}
+  .card p{font-size:13.5px;margin-bottom:16px;color:var(--card-sub)}
 </style>
 </head>
 <body class="play">
 
 <header>
   <div class="wordmark">ZIP<sup>3</sup><small id="modeTag">play — draw on the cube</small></div>
-  <div class="stats playOnly">
-    <div class="stat">next <b id="pNext">2</b></div>
-    <div class="stat">filled <b id="pFilled">1</b>/24</div>
-  </div>
-  <div class="stats solverOnly">
-    <div class="stat">pushes<b id="sPush">0</b></div>
-    <div class="stat">backtracks<b id="sPop">0</b></div>
-    <div class="stat pr">prunes<b id="sPrune">0</b></div>
-    <div class="stat">depth<b id="sDepth">0</b>/24</div>
+  <div class="hud">
+    <div class="stats playOnly">
+      <div class="stat">next <b id="pNext">2</b></div>
+      <div class="stat">filled <b><span id="pFilled">1</span>/24</b></div>
+    </div>
+    <div class="stats solverOnly">
+      <div class="stat">pushes<b id="sPush">0</b></div>
+      <div class="stat">backtracks<b id="sPop">0</b></div>
+      <div class="stat pr">prunes<b id="sPrune">0</b></div>
+      <div class="stat">depth<b><span id="sDepth">0</span>/24</b></div>
+    </div>
+    <button id="themeBtn" aria-label="switch color theme">☀</button>
   </div>
 </header>
 
@@ -122,8 +154,8 @@
 <div id="treePane">
   <canvas id="treeCanvas"></canvas>
   <div class="treeLegend">
-    <i style="background:#ff6b2c"></i>path <i style="background:#4a625d"></i>backtracked
-    <i style="background:#2fbf9f"></i>pruned <i style="background:#8df2b0"></i>solution
+    <i style="background:var(--tree-active)"></i>path <i style="background:var(--tree-back)"></i>backtracked
+    <i style="background:var(--tree-prune)"></i>pruned <i style="background:var(--tree-sol)"></i>solution
   </div>
   <button id="followBtn" class="on">⌖ follow</button>
 </div>
@@ -163,6 +195,26 @@
 (() => {
   const $ = id => document.getElementById(id);
 
+  // ================= DESIGN TOKENS =================
+  // Single source of truth is CSS (:root / body.light). Cached here once per
+  // theme switch so draw code never touches getComputedStyle per frame.
+  let T=null;
+  function readTokens(){
+    const cs=getComputedStyle(document.body);
+    const v=n=>cs.getPropertyValue(n).trim();
+    const fg=v('--fg-rgb');
+    T={
+      cubeBody:new THREE.Color(v('--cube-body')),
+      tile:new THREE.Color(v('--tile')), tilePath:new THREE.Color(v('--tile-path')),
+      tileHot:new THREE.Color(v('--tile-hot')), tileBad:new THREE.Color(v('--tile-bad')),
+      path:v('--path'), pathSolved:v('--path-solved'), headRing:v('--head-ring'),
+      accent:v('--accent'), badgeBg:v('--badge-bg'), badgeInk:v('--badge-ink'),
+      netTag:`rgba(${fg},0.4)`, treeLine:`rgba(${fg},0.28)`, treeNum:v('--tree-num'),
+      treeCol:{1:v('--tree-active'),2:v('--tree-back'),3:v('--tree-prune'),4:v('--tree-sol')},
+    };
+  }
+  readTokens();
+
   // ================= 3D CUBE (hero) =================
   const pane = $('cubePane');
   const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
@@ -176,8 +228,8 @@
   const dl2 = new THREE.DirectionalLight(0xffe0b8, .25); dl2.position.set(-4,-2,-5); sceneG.add(dl2);
   const cube = new THREE.Group(); sceneG.add(cube);
   cube.quaternion.setFromEuler(new THREE.Euler(0.42, -0.62, 0));
-  cube.add(new THREE.Mesh(new THREE.BoxGeometry(2.02,2.02,2.02),
-           new THREE.MeshLambertMaterial({color:0x0a2724})));
+  const bodyMat=new THREE.MeshLambertMaterial({color:T.cubeBody});
+  cube.add(new THREE.Mesh(new THREE.BoxGeometry(2.02,2.02,2.02), bodyMat));
   function sizeCube(){
     const w=pane.clientWidth, h=pane.clientHeight;
     camera.aspect=w/h; camera.updateProjectionMatrix();
@@ -213,10 +265,8 @@
     return new THREE.ShapeGeometry(sh,6);
   }
   const tileGeo=roundedTile(0.9,0.12);
-  const IVORY=new THREE.Color(0xefe6cf), PEACH=new THREE.Color(0xffc98f),
-        HOT=new THREE.Color(0xa34b1e), BADC=new THREE.Color(0xe04f3f);
   cells.forEach(c=>{
-    const m=new THREE.Mesh(tileGeo,new THREE.MeshLambertMaterial({color:IVORY.clone()}));
+    const m=new THREE.Mesh(tileGeo,new THREE.MeshLambertMaterial({color:T.tile.clone()}));
     m.position.copy(c.center).addScaledVector(c.normal,0.015);
     m.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),c.normal);
     m.userData.cellId=c.id;
@@ -227,13 +277,26 @@
     const cv=document.createElement('canvas'); cv.width=cv.height=128;
     const g=cv.getContext('2d');
     g.beginPath(); g.arc(64,64,54,0,Math.PI*2);
-    g.fillStyle=isLast?'#ff6b2c':'#1b2b28'; g.fill();
-    g.lineWidth=7; g.strokeStyle='#efe6cf'; g.stroke();
-    g.fillStyle='#efe6cf'; g.font='700 60px "Space Grotesk",sans-serif';
+    g.fillStyle=isLast?T.accent:T.badgeBg; g.fill();
+    g.lineWidth=7; g.strokeStyle=T.badgeInk; g.stroke();
+    g.fillStyle=T.badgeInk; g.font='700 60px "Space Grotesk",sans-serif';
     g.textAlign='center'; g.textBaseline='middle'; g.fillText(n,64,68);
     const t=new THREE.CanvasTexture(cv); t.anisotropy=4; return t;
   }
   const badgeGeo=new THREE.PlaneGeometry(0.5,0.5);
+  function rebuildBadges(){
+    cells.forEach(c=>{
+      if(c.badge){
+        cube.remove(c.badge); c.badge.material.map.dispose(); c.badge.material.dispose(); c.badge=null;
+      }
+      if(!c.num) return;
+      const b=new THREE.Mesh(badgeGeo,new THREE.MeshBasicMaterial({
+        map:badgeTexture(c.num,c.num===N),transparent:true,depthWrite:false}));
+      b.position.copy(c.center).addScaledVector(c.normal,0.03);
+      b.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),c.normal);
+      cube.add(b); c.badge=b;
+    });
+  }
 
   // ---- net mapping ----
   function netCoord(c){
@@ -286,17 +349,11 @@
     }
     idxs.push(23);
     numByCell={};
-    cells.forEach(c=>{c.num=null; if(c.badge){
-      cube.remove(c.badge); c.badge.material.map.dispose(); c.badge.material.dispose(); c.badge=null;
-    }});
+    cells.forEach(c=>c.num=null);
     idxs.forEach((pi,k)=>{
       const c=cells[sol[pi]]; c.num=k+1; numByCell[c.id]=k+1;
-      const b=new THREE.Mesh(badgeGeo,new THREE.MeshBasicMaterial({
-        map:badgeTexture(k+1,k+1===N),transparent:true,depthWrite:false}));
-      b.position.copy(c.center).addScaledVector(c.normal,0.03);
-      b.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),c.normal);
-      cube.add(b); c.badge=b;
     });
+    rebuildBadges();
     startCell=sol[0];
     cells.forEach(c=>{
       c.order=[...c.nbrIds];
@@ -307,6 +364,7 @@
   // ================= SHARED STATE =================
   let mode='play';
   let path=[], heat=new Uint32Array(24), solvedNow=false;
+  const onPath=new Uint8Array(24);   // mask of path[], rebuilt once per dirty flush
   let flash={id:-1, until:0};
   let viewsDirty=true, lastLog='';
   const log = m => { lastLog=m; $('logline').textContent=m; };
@@ -321,9 +379,9 @@
   const dotGeo=new THREE.SphereGeometry(0.1,14,12);
   const headGeo=new THREE.SphereGeometry(0.14,16,14);
   const jointGeo=new THREE.SphereGeometry(0.075,10,8);
-  const pathMat=new THREE.MeshLambertMaterial({color:0xff6b2c});
+  const pathMat=new THREE.MeshLambertMaterial({color:T.path});
   let headMesh=null;
-  function resetRunState(){ heat=new Uint32Array(24); solvedNow=false; pathMat.color.set(0xff6b2c); }
+  function resetRunState(){ heat=new Uint32Array(24); solvedNow=false; pathMat.color.set(T.path); }
   const lift=c=>c.center.clone().addScaledVector(c.normal,0.09);
   function seg3(a,b){
     const m=new THREE.Mesh(segGeo,pathMat);
@@ -354,10 +412,10 @@
     }
   }
   const tileColor=id=>{
-    if(flash.id===id && performance.now()<flash.until) return BADC;
-    if(path.includes(id)) return PEACH;
+    if(flash.id===id && performance.now()<flash.until) return T.tileBad;
+    if(onPath[id]) return T.tilePath;
     const h=Math.min(1, Math.log2(1+heat[id])/6);
-    return IVORY.clone().lerp(HOT,h);
+    return T.tile.clone().lerp(T.tileHot,h);
   };
   function refreshTiles(){ cells.forEach(c=>c.mesh.material.color.copy(tileColor(c.id))); }
 
@@ -394,14 +452,14 @@
       rr(g, p.x-cs/2+pad, p.y-cs/2+pad, cs-2*pad, cs-2*pad, cs*0.14);
       g.fill();
     });
-    g.fillStyle='rgba(239,230,207,0.4)';
+    g.fillStyle=T.netTag;
     g.font=`700 ${Math.max(6,cs*0.28)}px "Space Grotesk",sans-serif`;
     g.textAlign='left'; g.textBaseline='top';
     FACE_TAGS.forEach(f=>{
       g.fillText(f.t, NM.ox+f.bc*2*cs+cs*0.12, NM.oy+(5-(f.br*2+1))*cs+cs*0.08);
     });
     if(path.length){
-      const pc = solvedNow ? '#5fd68b' : '#ff6b2c';
+      const pc = solvedNow ? T.pathSolved : T.path;
       g.lineCap='round'; g.lineJoin='round';
       for(let i=1;i<path.length;i++){
         const a=netPx(cells[path[i-1]]), b=netPx(cells[path[i]]);
@@ -425,16 +483,16 @@
         g.beginPath(); g.arc(p.x,p.y, i===path.length-1?cs*0.2:cs*0.12, 0,Math.PI*2); g.fill();
       });
       const hp=netPx(cells[path[path.length-1]]);
-      g.strokeStyle='#ffe3c2'; g.lineWidth=1.6;
+      g.strokeStyle=T.headRing; g.lineWidth=1.6;
       g.beginPath(); g.arc(hp.x,hp.y,cs*0.3,0,Math.PI*2); g.stroke();
     }
     cells.forEach(c=>{
       if(!c.num) return;
       const p=netPx(c), r=cs*0.26;
       g.beginPath(); g.arc(p.x,p.y,r,0,Math.PI*2);
-      g.fillStyle=c.num===N?'#ff6b2c':'#1b2b28'; g.fill();
-      g.lineWidth=Math.max(1,cs*0.05); g.strokeStyle='#efe6cf'; g.stroke();
-      g.fillStyle='#efe6cf';
+      g.fillStyle=c.num===N?T.accent:T.badgeBg; g.fill();
+      g.lineWidth=Math.max(1,cs*0.05); g.strokeStyle=T.badgeInk; g.stroke();
+      g.fillStyle=T.badgeInk;
       g.font=`700 ${Math.max(7,cs*0.32)}px "Space Grotesk",sans-serif`;
       g.textAlign='center'; g.textBaseline='middle';
       g.fillText(c.num, p.x, p.y+0.5);
@@ -544,7 +602,6 @@
   const DX=15, DY=25;
   let nSlot=[], nDepth=[], nParent=[], nCell=[], nState=[], nKids=[];
   let stackN=[], leafX=0, headNode=-1;
-  const COL={1:'#ff6b2c',2:'#4a625d',3:'#2fbf9f',4:'#8df2b0'};
   let view={s:0.9, ox:40, oy:26}, follow=true, treeDirty=true;
 
   function resetTreeData(){
@@ -592,7 +649,7 @@
     const step=count>15000?Math.ceil(count/15000):1;
     const r=Math.max(1.4, 4.6*s);
     if(count<6000 && s>0.18){
-      tCtx.strokeStyle='rgba(239,230,207,0.28)';
+      tCtx.strokeStyle=T.treeLine;
       tCtx.lineWidth=Math.max(0.6,1.3*s);
       tCtx.beginPath();
       for(let i=i0;i<i1;i++){
@@ -602,7 +659,7 @@
       tCtx.stroke();
     }
     for(const st of [2,3,1,4]){
-      tCtx.fillStyle=COL[st];
+      tCtx.fillStyle=T.treeCol[st];
       tCtx.beginPath();
       for(let i=i0;i<i1;i+=step){
         if(nState[i]!==st) continue;
@@ -613,7 +670,7 @@
       tCtx.fill();
     }
     if(dx>9){
-      tCtx.fillStyle='#071f1d';
+      tCtx.fillStyle=T.treeNum;
       tCtx.font=`700 ${Math.max(7,8.5*s*1.4)}px "Space Mono",monospace`;
       tCtx.textAlign='center'; tCtx.textBaseline='middle';
       for(let i=i0;i<i1;i++){
@@ -622,7 +679,7 @@
       }
     }
     if(headNode>=i0 && headNode<i1){
-      tCtx.strokeStyle='#ffe3c2'; tCtx.lineWidth=2;
+      tCtx.strokeStyle=T.headRing; tCtx.lineWidth=2;
       tCtx.beginPath(); tCtx.arc(X(headNode),Y(headNode),r+3.5,0,Math.PI*2); tCtx.stroke();
     }
   }
@@ -639,7 +696,7 @@
       lastLog=`↩ dead end — backtrack from ${label(id)}`; }
     else if(t===2){ path.pop(); live.prune++; treeClose(3);
       lastLog=`✂ pruned ${label(id)} — region cut off`; }
-    else if(t===3){ treeSolved(); solvedNow=true; pathMat.color.set(0x5fd68b); playing=false;
+    else if(t===3){ treeSolved(); solvedNow=true; pathMat.color.set(T.pathSolved); playing=false;
       lastLog=`★ solved — ${live.push} pushes, ${live.pop} backtracks, ${live.prune} prunes`; }
     else if(t===4){ playing=false;
       lastLog=traceStats.capped ? `⏹ stopped at cap (${CAP.toLocaleString()})`
@@ -669,7 +726,7 @@
     if(m==='solver'){
       mode='solver';
       basePath=path.slice();
-      document.body.className='solver';
+      document.body.classList.replace('play','solver');
       $('modeTag').textContent='ai solver — dfs from your position';
       $('modePlay').classList.remove('active'); $('modeSolver').classList.add('active');
       sizeCube(); sizeNet(); sizeTree();
@@ -678,7 +735,7 @@
       mode='play'; playing=false;
       path=basePath.slice();
       resetRunState();
-      document.body.className='play';
+      document.body.classList.replace('solver','play');
       $('modeTag').textContent='play — draw on the cube';
       $('modeSolver').classList.remove('active'); $('modePlay').classList.add('active');
       sizeCube(); sizeNet();
@@ -723,6 +780,20 @@
   const evPerSec=()=>Math.round(Math.pow(10, 0.3+(speedEl.value/100)*3.2));
   function setFollow(v){ follow=v; $('followBtn').classList.toggle('on',v); }
   $('followBtn').onclick=()=>setFollow(!follow);
+
+  // ---- theme ----
+  function applyTheme(){
+    readTokens();
+    bodyMat.color.copy(T.cubeBody);
+    pathMat.color.set(solvedNow?T.pathSolved:T.path);
+    rebuildBadges();
+    viewsDirty=true; treeDirty=true;
+  }
+  $('themeBtn').onclick=()=>{
+    const light=document.body.classList.toggle('light');
+    $('themeBtn').textContent=light?'☾':'☀';
+    applyTheme();
+  };
 
   // ================= POINTER: CUBE =================
   const ray=new THREE.Raycaster(), ndcV=new THREE.Vector2();
@@ -843,7 +914,10 @@
       if(ptr>=trace.length) playing=false;
       updateHud();
     }
-    if(viewsDirty){ drawCubePath(); refreshTiles(); drawNet(); viewsDirty=false; }
+    if(viewsDirty){
+      onPath.fill(0); for(const id of path) onPath[id]=1;
+      drawCubePath(); refreshTiles(); drawNet(); viewsDirty=false;
+    }
     if(mode==='solver'){
       if(follow&&headNode>=0){
         const targetX=treePane.clientWidth*0.6 - nSlot[headNode]*DX*view.s;
