@@ -101,6 +101,8 @@
   button{font-family:inherit;font-size:12px;font-weight:700;padding:8px 12px;border-radius:10px;
     border:1px solid rgba(var(--fg-rgb),.22);background:rgba(var(--fg-rgb),.07);color:var(--text);cursor:pointer}
   button:active{transform:scale(.96)}
+  button:disabled{opacity:.45;cursor:default}
+  button:disabled:active{transform:none}
   button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
   button.on{background:rgba(var(--ok-rgb),.2);border-color:var(--ok);color:var(--ok)}
   button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -676,6 +678,10 @@
   }
   function doHint(){
     if(mode!=='play'||path.length===24) return;
+    if(challenge&&challenge.running){
+      if(performance.now()<hintCooldownUntil) return;
+      hintCooldownUntil=performance.now()+10000;
+    }
     hintsUsed++;
     const sol=solveFrom(path);
     if(sol){
@@ -868,12 +874,20 @@
     if(m===mode) return;
     if(m==='solver'){
       mode='solver';
+      let voided=false;
+      if(challenge&&challenge.running){
+        endRun(false);
+        path=[startCell]; resetRunState();
+        $('pTime').textContent='–';
+        voided=true;
+      }
       basePath=path.slice();
       document.body.classList.replace('play','solver');
       $('modeTag').textContent='ai solver — dfs from your position';
       $('modePlay').classList.remove('active'); $('modeSolver').classList.add('active');
       sizeCube(); sizeNet(); sizeTree();
       rebuildTrace();
+      if(voided) log('⚡ challenge attempt voided — the solver knows the answer');
     } else {
       mode='play'; playing=false;
       path=basePath.slice();
@@ -1075,9 +1089,15 @@
       onPath.fill(0); for(const id of path) onPath[id]=1;
       drawCubePath(); refreshTiles(); drawNet(); viewsDirty=false;
     }
-    if(challenge&&challenge.running){
-      const tt=fmtTime(Date.now()-challenge.startEpoch);
-      if($('pTime').textContent!==tt) $('pTime').textContent=tt;
+    if(challenge){
+      const left=hintCooldownUntil-performance.now();
+      const txt=left>0?`💡 ${Math.ceil(left/1000)}s`:'💡 Hint';
+      const hb=$('hintBtn');
+      if(hb.textContent!==txt){ hb.textContent=txt; hb.disabled=left>0; }
+      if(challenge.running){
+        const tt=fmtTime(Date.now()-challenge.startEpoch);
+        if($('pTime').textContent!==tt) $('pTime').textContent=tt;
+      }
     }
     if(mode==='solver'){
       if(follow&&headNode>=0){
