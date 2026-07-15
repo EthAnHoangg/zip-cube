@@ -7,6 +7,20 @@ description: How to launch and drive index.html headlessly to verify changes
 
 Single-file app (`index.html`), no build. Needs network (Three.js CDN) and WebGL.
 
+## Choose the cheapest sufficient check
+
+Headless Chrome runs are slow (SwiftShader renders in real time) and expensive
+in tokens (DOM dumps, screenshots, retry loops). Escalate only as needed:
+
+1. **Every edit:** syntax check (below). Seconds, near-zero cost.
+2. **Pure logic** (solver, encoding, adjacency, scoring…): extract the function(s)
+   into a scratch .js file with minimal stubs and run under `node`. No browser.
+3. **API / server code:** call it directly (`curl`, node fetch) — never via the UI.
+4. **Headless Chrome:** ONLY when the change touches rendering, pointer input, or
+   DOM wiring that node can't exercise — and then **once, at the end of the task**
+   as final verification, not per-iteration. One driver covering the changed flow
+   beats several small runs. Skip screenshots unless visuals are the thing changed.
+
 ## Syntax check (fast)
 
 Extract the inline `<script>` block to a temp .js file and run `node --check` on it.
