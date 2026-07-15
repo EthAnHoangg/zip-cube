@@ -45,4 +45,55 @@ function cleanEntry(b){
           record:{name, first, best:b.best, attempts:b.attempts}};
 }
 
+const REST_URL=process.env.UPSTASH_REDIS_REST_URL||process.env.KV_REST_API_URL;
+const REST_TOKEN=process.env.UPSTASH_REDIS_REST_TOKEN||process.env.KV_REST_API_TOKEN;
+const TTL=90*24*3600, CAP=200;
+
+async function redis(cmds){
+  const r=await fetch(REST_URL+'/pipeline',{method:'POST',
+    headers:{Authorization:'Bearer '+REST_TOKEN,'Content-Type':'application/json'},
+    body:JSON.stringify(cmds)});
+  if(!r.ok) throw new Error('upstash '+r.status);
+  const out=await r.json();
+  const bad=out.find(o=>o.error); if(bad) throw new Error(bad.error);
+  return out.map(o=>o.result);
+}
+function parseBoard(flat){          // HGETALL REST result: [field,value,field,value,…]
+  const entries=[];
+  for(let i=0;i+1<(flat||[]).length;i+=2){
+    try{ entries.push({deviceId:flat[i], ...JSON.parse(flat[i+1])}); }catch(e){}
+  }
+  return entries;
+}
+
+module.exports=async(req,res)=>{
+  if(!REST_URL||!REST_TOKEN) return res.status(503).json({error:'not configured'});
+  try{
+    if(req.method==='GET'){
+      const code=String(req.query.code||'');
+      if(!decodeCode(code)) return res.status(400).json({error:'bad code'});
+      const [flat]=await redis([['HGETALL','lb:'+code.toLowerCase()]]);
+      return res.status(200).json({entries:parseBoard(flat)});
+    }
+    if(req.method==='POST'){
+      const body=typeof req.body==='string'?JSON.parse(req.body||'{}'):req.body;
+      if(JSON.stringify(body||{}).length>4096) return res.status(400).json({error:'too big'});
+      const e=cleanEntry(body);
+      if(!e) return res.status(400).json({error:'invalid'});
+      const k='lb:'+e.code;
+      const [exists,len]=await redis([['HEXISTS',k,e.deviceId],['HLEN',k]]);
+      if(!exists&&len>=CAP) return res.status(409).json({error:'board full'});
+      e.record.ts=Date.now();
+      const flat=(await redis([
+        ['HSET',k,e.deviceId,JSON.stringify(e.record)],
+        ['EXPIRE',k,TTL],
+        ['HGETALL',k]]))[2];
+      return res.status(200).json({entries:parseBoard(flat)});
+    }
+    res.setHeader('Allow','GET, POST');
+    return res.status(405).json({error:'method not allowed'});
+  }catch(err){
+    return res.status(502).json({error:'upstream'});
+  }
+};
 module.exports.__test={decodeCode,validPath,cleanEntry,NBR};
