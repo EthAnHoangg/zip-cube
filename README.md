@@ -55,7 +55,7 @@ Zip Cube ⚡ first try 0:47.3
 …/index.html#z=a3k9f2
 ```
 
-No server, no accounts — results travel by copy-paste.
+No accounts — results travel by copy-paste. And if the deployment has the leaderboard configured, every challenge link also gets a **shared leaderboard**: solve the puzzle, join with a nickname on your first win, and the win card (plus the 🏆 button while a challenge is armed) shows everyone's results for that code, ranked by first-try time. Without a network or backend the game plays exactly the same — the board just says "leaderboard unavailable".
 
 ## The AI solver
 
@@ -95,6 +95,7 @@ JS reads the tokens once per switch (`readTokens()` → cached `T` object), reti
 
 ```
 index.html                       the whole game (markup, styles, logic)
+api/leaderboard.js               per-challenge leaderboard (Vercel function + Upstash Redis)
 docs/puzzle-and-solver.md        deep dive: generator & solver algorithms
 docs/images/                     README screenshots
 docs/superpowers/specs/          design docs

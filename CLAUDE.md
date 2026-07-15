@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Zip Cube — a LinkedIn-Zip-style puzzle played on the surface of a 3D cube, plus an animated DFS solver visualization. The entire app is one self-contained file, `index.html`: inline CSS, inline JS (one IIFE), no build step, no tests, no package manager. The only dependency is Three.js r128 loaded from a CDN, so the page needs network access on first load.
+Zip Cube — a LinkedIn-Zip-style puzzle played on the surface of a 3D cube, plus an animated DFS solver visualization. The client is one self-contained file, `index.html`: inline CSS, inline JS (one IIFE), no build step, no tests, no package manager. The only dependency is Three.js r128 loaded from a CDN, so the page needs network access on first load. The single exception to "static site" is `api/leaderboard.js`, a zero-dependency Vercel serverless function (see Leaderboard below).
 
 ## Running
 
@@ -46,6 +46,12 @@ Three separate pointer handlers (cube, net, tree). On the cube and net, dragging
 ### First-time tutorial
 
 A six-step interactive tutorial (`tut`/`TUT_STEPS`/`tutNote`) layered on play mode. Input handlers emit `tutNote(t, id, src)` events (`'rotate'|'extend'|'undo'|'win'`, `src` `'cube'|'net'`); each step's `done(evt)` predicate advances the machine, and `skipIf()` lets a step auto-skip if already satisfied. Glow steps reuse the `hint` mechanism with `until:Infinity` (recomputed via `solveFrom` after every move) plus `faceCell()` auto-turn. The board is a fixed puzzle code (`TUT_CODE`) loaded through `decodeCode()`/`applyPuzzle()`. The banner UI is gated by a `body.tut` class. Auto-starts on boot only when the `zipcube.tutorial` localStorage key is absent *and* the page wasn't opened via a challenge link; finishing or skipping sets the key. Solver entry, Challenge, and New puzzle all call `tutEnd()`; Reset rewinds to step index 1. The `?` header button replays via `tutStart()`. Debug hooks: `__zip.tut()`, `__zip.startTutorial()`, `__zip.glow()`.
+
+### Leaderboard (per-challenge, opt-in)
+
+`api/leaderboard.js` is the only server code: a CommonJS Vercel function with zero npm dependencies (no `package.json` — it uses only Node globals). Storage is one Upstash Redis hash per challenge code (`lb:{code}`, field = deviceId, value = JSON record, 90-day TTL, 200-entry cap), reached via Upstash's REST pipeline API with `fetch`; credentials come from `UPSTASH_REDIS_REST_URL`/`_TOKEN` (or the `KV_REST_API_*` names the Vercel marketplace integration injects) — unset means every request returns 503. POSTs are validated server-side against a **hardcoded `NBR` adjacency table** that mirrors the client's cell geometry (same construction order → same ids); if the cell construction in `index.html` ever changes, regenerate the table. A submission must include the winning 24-cell path visiting the code's checkpoints in order, so scores can't be posted without a real solution (times remain client-claimed by design). `module.exports.__test` exposes the pure validators for node-based tests.
+
+Client side: `zipcube.player` in localStorage holds `{deviceId, name}`; publishing is opt-in — the win overlay's `#lbPanel` offers an inline nickname input (never `window.prompt`) on the first challenge win, and once a name is stored, solved challenge runs auto-POST `{first, best, attempts, path}`. Boards render in the win card and in the `#lbView` overlay (🏆 button, visible while a challenge is armed), ranked by first-try time (DNFs after solved). All fetches have a 5s abort and degrade to a "leaderboard unavailable" note; the game never blocks on the network.
 
 ### Puzzle generation
 
