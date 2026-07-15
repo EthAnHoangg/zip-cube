@@ -447,6 +447,7 @@
   function dropChallenge(){
     if(challenge){ endRun(false); challenge=null; }
     $('timeStat').hidden=true;
+    $('hintBtn').textContent='💡 Hint'; $('hintBtn').disabled=false;
   }
 
   // ---- cube path rendering ----
@@ -1172,7 +1173,7 @@
   log(badLink ? 'invalid challenge link — fresh random puzzle instead'
               : 'draw on the cube — the mini net helps you peek around back');
   updateHud(); loop();
-  // debug hook for headless verification — reads state, never mutates it
+  // debug hook for headless verification — read-only except arm()
   window.__zip={
     code:puzzleCode,
     cells:cells.map(c=>({id:c.id, nbrIds:c.nbrIds.slice(), net:c.net})),
