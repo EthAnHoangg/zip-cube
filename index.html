@@ -979,6 +979,7 @@
     if(m===mode) return;
     if(m==='solver'){
       mode='solver';
+      tutEnd();
       let voided=false;
       if(challenge&&challenge.running){
         endRun(false);
@@ -1029,7 +1030,9 @@
   $('hintBtn').onclick=doHint;
   $('resetBtn').onclick=()=>{
     if(challenge&&challenge.running){ endRun(false); $('pTime').textContent='–'; }
-    path=[startCell]; viewsDirty=true; updateHud();
+    path=[startCell];
+    if(tut.active){ if(tut.step>1) tut.step=1; tutShow(); }
+    viewsDirty=true; updateHud();
   };
   async function copyText(txt,okMsg){
     try{ await navigator.clipboard.writeText(txt); log(okMsg); }
@@ -1042,6 +1045,7 @@
     return line+'\n'+challengeURL(challenge.code);
   }
   $('chalBtn').onclick=()=>{
+    tutEnd();
     if(challenge&&challenge.running) endRun(false);
     setHash(puzzleCode());
     armChallenge();
@@ -1052,6 +1056,7 @@
   };
   $('copyResBtn').onclick=()=>copyText(resultText(),'result copied — send it to your rivals');
   $('newBtn').onclick=()=>{
+    tutEnd();
     dropChallenge();
     makePuzzle(); setHash(puzzleCode());
     path=[startCell]; basePath=[startCell];
