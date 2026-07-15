@@ -139,12 +139,20 @@
   #lbName{font-family:inherit;font-size:12px;padding:7px 9px;border-radius:10px;width:120px;
     border:1px solid rgba(0,0,0,.25);background:transparent;color:var(--card-ink);user-select:text}
   #lbJoinBtn{border-color:rgba(0,0,0,.25);color:var(--card-ink);background:transparent}
-  .lbRow{display:flex;gap:8px;align-items:baseline;font-size:11.5px;padding:3px 6px;border-radius:7px;
-    color:var(--card-sub);font-family:'Space Mono',monospace}
+  .lbRow{display:flex;gap:7px;align-items:baseline;font-size:12.5px;padding:4px 8px;border-radius:8px;
+    color:var(--card-sub);font-family:'Space Mono',monospace;white-space:nowrap}
   .lbRow b{font-family:'Space Grotesk',sans-serif;color:var(--card-ink);flex:1;text-align:left;
-    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+    overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .lbRow .rank{min-width:20px;text-align:right}
+  .lbRow .num{min-width:60px;text-align:right}
+  .lbRow .tries{min-width:36px;text-align:right}
+  .lbRow.lbHead{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.2px;
+    text-transform:uppercase;color:var(--card-sub);opacity:.8;padding-top:0;padding-bottom:1px}
+  .lbRow.lbHead b{font-size:9px;color:var(--card-sub)}
   .lbRow.me{background:rgba(var(--ok-rgb),.16)}
   .lbNote{font-size:11px;color:var(--card-sub);padding:4px 0}
+  #win .card{max-width:330px}
+  #lbView .card{width:min(92vw,390px);max-width:none}
 </style>
 </head>
 <body class="play">
@@ -534,23 +542,25 @@
     const d=document.createElement('div'); d.className='lbNote'; d.textContent=msg;
     el.appendChild(d);
   }
+  function lbRowEl(cls,rank,name,first,best,tries){
+    const row=document.createElement('div'); row.className=cls;
+    const mk=(tag,c,txt)=>{const s=document.createElement(tag); if(c)s.className=c; s.textContent=txt; return s;};
+    row.append(mk('span','rank',rank), mk('b','',name),          // names rendered via textContent only
+      mk('span','num',first), mk('span','num',best), mk('span','tries',tries));
+    return row;
+  }
   function renderBoard(el,entries){
-    el.textContent='';                          // names rendered via textContent only
+    el.textContent='';
     if(!entries.length){ boardNote(el,'no results yet — you could be first'); return; }
     entries.sort(lbSort);
+    el.appendChild(lbRowEl('lbRow lbHead','','player','first try','best','tries'));
     const mine=entries.findIndex(e=>e.deviceId===getPlayer().deviceId);
     entries.forEach((e,i)=>{
       if(i>=10&&i!==mine) return;
-      const row=document.createElement('div');
-      row.className='lbRow'+(i===mine?' me':'');
-      const rank=document.createElement('span'); rank.textContent=(i+1)+'.';
-      const nm=document.createElement('b'); nm.textContent=e.name;
-      const ft=document.createElement('span');
-      ft.textContent=e.first&&!e.first.dnf?fmtTime(e.first.t):'✗';
-      const meta=document.createElement('span');
-      meta.textContent=(e.best!=null?fmtTime(e.best):'–')+' ×'+e.attempts;
-      row.append(rank,nm,ft,meta);
-      el.appendChild(row);
+      el.appendChild(lbRowEl('lbRow'+(i===mine?' me':''), (i+1)+'.', e.name,
+        e.first&&!e.first.dnf?fmtTime(e.first.t):'✗',
+        e.best!=null?fmtTime(e.best):'–',
+        '×'+e.attempts));
     });
   }
   let lastWin=null;   // {code, rec, path} of the most recent solved challenge run
