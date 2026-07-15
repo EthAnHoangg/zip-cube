@@ -50,8 +50,19 @@
     text-transform:uppercase;color:rgba(var(--fg-rgb),.55)}
   .hud{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap;justify-content:flex-end;
     min-width:0;margin-left:auto}
-  #themeBtn{padding:2px 10px;font-size:14px;line-height:1;border-radius:9px;
+  #themeBtn,#helpBtn{padding:2px 10px;font-size:14px;line-height:1;border-radius:9px;
     background:rgba(var(--fg-rgb),.07);border:1px solid rgba(var(--fg-rgb),.16)}
+  #tutBanner{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:6;
+    display:none;width:min(92%,340px);background:var(--card);color:var(--card-ink);
+    border-radius:14px;padding:10px 12px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  body.tut #tutBanner{display:block}
+  #tutText{font-size:12.5px;font-weight:500;line-height:1.35}
+  #tutFoot{display:flex;align-items:center;justify-content:space-between;margin-top:7px}
+  #tutDots i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;
+    background:var(--card-sub);opacity:.35}
+  #tutDots i.on{background:var(--accent);opacity:1}
+  #tutSkip{padding:5px 10px;font-size:11px;background:transparent;
+    border:1px solid rgba(0,0,0,.18);color:var(--card-sub)}
   .stats{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
   .stat{background:rgba(var(--fg-rgb),.07);border:1px solid rgba(var(--fg-rgb),.16);
     border-radius:9px;padding:2px 8px;font-size:10px;white-space:nowrap;text-align:center}
@@ -141,11 +152,16 @@
       <div class="stat pr">prunes<b id="sPrune">0</b></div>
       <div class="stat">depth<b><span id="sDepth">0</span>/24</b></div>
     </div>
+    <button id="helpBtn" aria-label="replay tutorial">?</button>
     <button id="themeBtn" aria-label="switch color theme">☀</button>
   </div>
 </header>
 
 <div id="cubePane">
+  <div id="tutBanner">
+    <div id="tutText"></div>
+    <div id="tutFoot"><span id="tutDots"></span><button id="tutSkip">Skip</button></div>
+  </div>
   <div id="netPane">
     <div class="paneTag">net</div>
     <canvas id="netCanvas"></canvas>
@@ -606,7 +622,7 @@
     setTimeout(()=>{viewsDirty=true;}, 300);
     if(msg) log(msg);
   }
-  function tryExtend(cell){
+  function tryExtend(cell, src){
     if(mode!=='play') return false;
     const head=cells[path[path.length-1]];
     if(path.includes(cell.id)) return false;
@@ -618,6 +634,7 @@
     }
     path.push(cell.id);
     hint.until=0;
+    tutNote('extend',cell.id,src);
     if(challenge){ if(challenge.running) persistRun(); else startRun(); }
     viewsDirty=true; updateHud();
     if(path.length===24) userWin();
@@ -629,21 +646,23 @@
     if(i<0||i===path.length-1) return;
     path=path.slice(0,i+1);
     persistRun();
+    tutNote('undo');
     viewsDirty=true; updateHud();
   }
-  function popOne(){ if(path.length>1){ path.pop(); persistRun(); viewsDirty=true; updateHud(); } }
-  function dragDraw(cell){
+  function popOne(){ if(path.length>1){ path.pop(); persistRun(); tutNote('undo'); viewsDirty=true; updateHud(); } }
+  function dragDraw(cell, src){
     if(!cell) return;
     if(path.length>1 && cell.id===path[path.length-2]) popOne();
-    else tryExtend(cell);
+    else tryExtend(cell, src);
   }
-  function tapCell(cell){
+  function tapCell(cell, src){
     if(!cell) return;
     if(path.includes(cell.id)) truncateTo(cell);
-    else if(!tryExtend(cell) && !cells[path[path.length-1]].nbrIds.includes(cell.id))
+    else if(!tryExtend(cell, src) && !cells[path[path.length-1]].nbrIds.includes(cell.id))
       log('only cells next to the path end');
   }
   function userWin(){
+    tutNote('win');
     const h=hintsUsed?` — with ${hintsUsed} hint${hintsUsed>1?'s':''}`:'';
     $('winStats').textContent=`All 24 cells, 1 → ${N}, drawn by hand across three dimensions${h}.`;
     if(challenge&&challenge.running){
@@ -710,6 +729,79 @@
     faceCell(cells[hint.id]);
     viewsDirty=true;
     setTimeout(()=>{viewsDirty=true;}, 4100);
+  }
+
+  // ================= TUTORIAL =================
+  const TUT_CODE='njlki0';   // fixed first-timer board (any valid puzzle code)
+  const TUT_LS='zipcube.tutorial';
+  const tutSeen=()=>{ try{ return !!localStorage.getItem(TUT_LS); }catch(e){ return true; } };
+  const tutMark=()=>{ try{ localStorage.setItem(TUT_LS,'done'); }catch(e){} };
+  let tut={active:false, step:0};
+  const TUT_STEPS=[
+    {text:'Drag anywhere on the cube to spin it around.',
+     done:e=>e.t==='rotate'},
+    {text:'Now drag from ① onto the glowing cell.', glow:true,
+     done:e=>e.t==='extend'&&e.id===hint.id},
+    {text:'Keep drawing — checkpoints must be visited in order. Reach ②.', glow:true,
+     skipIf:()=>nextExpected(path)>2,
+     done:e=>e.t==='extend'&&numByCell[e.id]===2},
+    {text:'Made a mistake? Drag backwards, tap a visited cell, or press Undo.',
+     done:e=>e.t==='undo'},
+    {text:'The mini net shows all six faces flat — draw the next move on the net.', glow:true,
+     done:e=>e.t==='extend'&&e.src==='net'},
+    {text:'You know everything. Fill all 24 cells, ① → ⑥ in order. Finish it!',
+     done:e=>e.t==='win'},
+  ];
+  function tutGlow(){
+    const st=TUT_STEPS[tut.step];
+    if(!st.glow){ if(hint.until===Infinity) hint={id:-1,until:0}; return; }
+    const sol=solveFrom(path);
+    if(sol) hint={id:sol[path.length], until:Infinity};
+    else{
+      let k=path.length-1;
+      while(k>1 && !solveFrom(path.slice(0,k))) k--;
+      hint={id:path[k-1], until:Infinity};
+    }
+    viewsDirty=true;
+  }
+  function tutShow(){
+    const st=TUT_STEPS[tut.step];
+    $('tutText').textContent=st.text;
+    $('tutDots').innerHTML=TUT_STEPS.map((_,i)=>'<i class="'+(i<=tut.step?'on':'')+'"></i>').join('');
+    tutGlow();
+    if(st.glow && hint.id>=0) faceCell(cells[hint.id]);
+  }
+  function tutNote(t,id,src){
+    if(!tut.active) return;
+    if(TUT_STEPS[tut.step].done({t,id,src})){
+      tut.step++;
+      while(tut.step<TUT_STEPS.length && TUT_STEPS[tut.step].skipIf && TUT_STEPS[tut.step].skipIf()) tut.step++;
+      if(tut.step>=TUT_STEPS.length) tutEnd(); else tutShow();
+    } else if(TUT_STEPS[tut.step].glow) tutGlow();
+  }
+  function tutStart(){
+    if(mode==='solver') setMode('play');
+    dropChallenge();
+    const ids=decodeCode(TUT_CODE);
+    if(ids) applyPuzzle(ids); else makePuzzle();
+    setHash(puzzleCode());
+    path=[startCell]; basePath=[startCell];
+    resetRunState();
+    hint={id:-1,until:0}; hintsUsed=0;
+    $('win').classList.remove('show');
+    tut={active:true, step:0};
+    document.body.classList.add('tut');
+    tutShow();
+    log('tutorial — follow the banner');
+    viewsDirty=true; updateHud();
+  }
+  function tutEnd(){
+    if(!tut.active) return;
+    tut.active=false;
+    tutMark();
+    document.body.classList.remove('tut');
+    if(hint.until===Infinity) hint={id:-1,until:0};
+    viewsDirty=true;
   }
 
   // ================= SOLVER =================
@@ -887,6 +979,7 @@
     if(m===mode) return;
     if(m==='solver'){
       mode='solver';
+      tutEnd();
       let voided=false;
       if(challenge&&challenge.running){
         endRun(false);
@@ -937,7 +1030,9 @@
   $('hintBtn').onclick=doHint;
   $('resetBtn').onclick=()=>{
     if(challenge&&challenge.running){ endRun(false); $('pTime').textContent='–'; }
-    path=[startCell]; viewsDirty=true; updateHud();
+    path=[startCell];
+    if(tut.active){ if(tut.step>1) tut.step=1; tutShow(); }
+    viewsDirty=true; updateHud();
   };
   async function copyText(txt,okMsg){
     try{ await navigator.clipboard.writeText(txt); log(okMsg); }
@@ -950,6 +1045,7 @@
     return line+'\n'+challengeURL(challenge.code);
   }
   $('chalBtn').onclick=()=>{
+    tutEnd();
     if(challenge&&challenge.running) endRun(false);
     setHash(puzzleCode());
     armChallenge();
@@ -960,6 +1056,7 @@
   };
   $('copyResBtn').onclick=()=>copyText(resultText(),'result copied — send it to your rivals');
   $('newBtn').onclick=()=>{
+    tutEnd();
     dropChallenge();
     makePuzzle(); setHash(puzzleCode());
     path=[startCell]; basePath=[startCell];
@@ -986,6 +1083,8 @@
     rebuildBadges();
     viewsDirty=true; treeDirty=true;
   }
+  $('tutSkip').onclick=()=>{ tutEnd(); $('newBtn').onclick(); };
+  $('helpBtn').onclick=tutStart;
   $('themeBtn').onclick=()=>{
     const light=document.body.classList.toggle('light');
     $('themeBtn').textContent=light?'☾':'☀';
@@ -1018,12 +1117,13 @@
         new THREE.Vector3(dy,dx,0).normalize(), Math.hypot(dx,dy)*0.0075);
       cube.quaternion.premultiply(q);
       cDown={x:e.clientX,y:e.clientY};
+      if(cMoved) tutNote('rotate');
     } else {
-      dragDraw(pickCell(e.clientX,e.clientY));
+      dragDraw(pickCell(e.clientX,e.clientY),'cube');
     }
   });
   renderer.domElement.addEventListener('pointerup',e=>{
-    if(cDown && !cMoved && mode==='play') tapCell(pickCell(e.clientX,e.clientY));
+    if(cDown && !cMoved && mode==='play') tapCell(pickCell(e.clientX,e.clientY),'cube');
     cDown=null; cMode=null;
   });
 
@@ -1046,12 +1146,12 @@
     const p=netXY(e);
     if(Math.hypot(p.x-nDown.x,p.y-nDown.y)>7) nMoved=true;
     if(!nDraw) return;
-    dragDraw(netHit(p.x,p.y));
+    dragDraw(netHit(p.x,p.y),'net');
   });
   nCv.addEventListener('pointerup',e=>{
     if(nDown && !nMoved && mode==='play'){
       const p=netXY(e);
-      tapCell(netHit(p.x,p.y));
+      tapCell(netHit(p.x,p.y),'net');
     }
     nDown=null; nDraw=false;
   });
@@ -1172,13 +1272,18 @@
   sizeCube(); sizeNet(); sizeTree();
   log(badLink ? 'invalid challenge link — fresh random puzzle instead'
               : 'draw on the cube — the mini net helps you peek around back');
-  updateHud(); loop();
+  updateHud();
+  if(!bootIds && !tutSeen()) tutStart();
+  loop();
   // debug hook for headless verification — read-only except arm()
   window.__zip={
     code:puzzleCode,
     cells:cells.map(c=>({id:c.id, nbrIds:c.nbrIds.slice(), net:c.net})),
     solution:()=>solveFrom(path),
     arm:armChallenge,   // lets headless drivers arm a challenge on the boot puzzle
+    tut:()=>({active:tut.active, step:tut.step}),
+    startTutorial:tutStart,
+    glow:()=>hint.id,
     state:()=>({path:path.slice(), numByCell:{...numByCell}, startCell, hintsUsed,
       challenge:challenge&&{code:challenge.code, running:challenge.running,
         attempt:challenge.attempt, startEpoch:challenge.startEpoch,
