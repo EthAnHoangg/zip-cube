@@ -38,6 +38,21 @@ Every puzzle is guaranteed solvable: the generator finds a random Hamiltonian pa
 
 Illegal moves flash red and tell you why (`reach 3 first`, `6 must be your last cell`). The mini-map is the answer to "what's behind the cube" — jumps that cross hidden geometry render as dashed arcs.
 
+## Challenge a friend
+
+Every puzzle has a 6-character code in the URL (`#z=…`) — the checkpoint layout itself, one base-36 character per cell. Hit **⚡ Challenge** to copy a link and race it yourself: the timer starts on your first move. Friends who open the link get the identical cube.
+
+Your **first try is sacred**: its result (time, or ✗ if you bail) is recorded permanently and always leads your shared result; retries are allowed but counted. A mid-run page reload resumes the same attempt with the clock still running — it's wall-clock time, so refreshing buys you nothing. Opening the AI solver mid-run voids the attempt, and hints go on a 10-second cooldown while the clock is running.
+
+Solve it and the win card shows your time, attempt number, first-try result, and personal best, plus a **Copy result** snippet to paste at your rivals:
+
+```
+Zip Cube ⚡ first try 0:47.3
+…/index.html#z=a3k9f2
+```
+
+No server, no accounts — results travel by copy-paste.
+
 ## The AI solver
 
 Switch to **🤖 AI solver** at any moment and the solver picks up *from your current position* — it never touches your board; switch back and your hand-drawn path is exactly where you left it.
