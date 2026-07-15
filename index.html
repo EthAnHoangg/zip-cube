@@ -693,8 +693,9 @@
     if(mode==='play' && path.length && path.length<24){
       const head=cells[path[path.length-1]], hp=netPx(head);
       const exp=nextExpected(path);
+      const lw=Math.max(1.4,cs*0.09);
       g.strokeStyle=T.accent;
-      g.lineWidth=Math.max(1.4,cs*0.09);
+      g.lineWidth=lw;
       head.nbrIds.forEach(nb=>{
         if(onPath[nb]) return;
         const c2=cells[nb];
@@ -702,7 +703,7 @@
         const p=netPx(c2);
         const jump=Math.hypot(p.x-hp.x,p.y-hp.y) >= cs*1.5;
         g.setLineDash(jump?[cs*0.16,cs*0.13]:[]);
-        rr(g, p.x-cs/2+pad*1.8, p.y-cs/2+pad*1.8, cs-3.6*pad, cs-3.6*pad, cs*0.12);
+        rr(g, p.x-cs/2+pad+lw/2, p.y-cs/2+pad+lw/2, cs-2*pad-lw, cs-2*pad-lw, Math.max(0,cs*0.14-lw/2));
         g.stroke();
       });
       g.setLineDash([]);
