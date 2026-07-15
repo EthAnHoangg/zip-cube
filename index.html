@@ -101,6 +101,8 @@
   button{font-family:inherit;font-size:12px;font-weight:700;padding:8px 12px;border-radius:10px;
     border:1px solid rgba(var(--fg-rgb),.22);background:rgba(var(--fg-rgb),.07);color:var(--text);cursor:pointer}
   button:active{transform:scale(.96)}
+  button:disabled{opacity:.45;cursor:default}
+  button:disabled:active{transform:none}
   button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
   button.on{background:rgba(var(--ok-rgb),.2);border-color:var(--ok);color:var(--ok)}
   button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -131,6 +133,7 @@
     <div class="stats playOnly">
       <div class="stat">next <b id="pNext">2</b></div>
       <div class="stat">filled <b><span id="pFilled">1</span>/24</b></div>
+      <div class="stat" id="timeStat" hidden>time <b id="pTime">–</b></div>
     </div>
     <div class="stats solverOnly">
       <div class="stat">pushes<b id="sPush">0</b></div>
@@ -167,6 +170,7 @@
     <button id="undoBtn">Undo</button>
     <button id="resetBtn">Reset</button>
     <button id="hintBtn">💡 Hint</button>
+    <button id="chalBtn">⚡ Challenge</button>
   </div>
   <div class="row solverOnly">
     <button id="playBtn" class="primary">▶ Play</button>
@@ -188,6 +192,8 @@
   <div class="card">
     <h2>Solved!</h2>
     <p id="winStats"></p>
+    <p id="chalStats" hidden></p>
+    <button id="copyResBtn" hidden>Copy result</button>
     <button id="againBtn" class="primary">New puzzle</button>
   </div>
 </div>
@@ -341,6 +347,17 @@
     }
     return null;
   }
+  function applyPuzzle(chk){   // chk = checkpoint cell ids, index k → number k+1
+    numByCell={};
+    cells.forEach(c=>c.num=null);
+    chk.forEach((id,k)=>{ cells[id].num=k+1; numByCell[id]=k+1; });
+    rebuildBadges();
+    startCell=chk[0];
+    cells.forEach(c=>{
+      c.order=[...c.nbrIds];
+      for(let i=c.order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[c.order[i],c.order[j]]=[c.order[j],c.order[i]];}
+    });
+  }
   function makePuzzle(){
     let sol=hamiltonianPath();
     while(!sol) sol=hamiltonianPath();
@@ -351,18 +368,23 @@
       idxs.push(i);
     }
     idxs.push(23);
-    numByCell={};
-    cells.forEach(c=>c.num=null);
-    idxs.forEach((pi,k)=>{
-      const c=cells[sol[pi]]; c.num=k+1; numByCell[c.id]=k+1;
-    });
-    rebuildBadges();
-    startCell=sol[0];
-    cells.forEach(c=>{
-      c.order=[...c.nbrIds];
-      for(let i=c.order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[c.order[i],c.order[j]]=[c.order[j],c.order[i]];}
-    });
+    applyPuzzle(idxs.map(i=>sol[i]));
   }
+  // ---- challenge codes: the 6 checkpoint cell ids, one base36 char each ----
+  function puzzleCode(){
+    const byNum=new Array(N);
+    for(const id in numByCell) byNum[numByCell[id]-1]=Number(id);
+    return byNum.map(id=>id.toString(36)).join('');
+  }
+  function decodeCode(str){
+    if(typeof str!=='string' || str.length!==N) return null;
+    const ids=[...str.toLowerCase()].map(ch=>parseInt(ch,36));
+    if(ids.some(id=>!Number.isInteger(id)||id<0||id>23)) return null;
+    if(new Set(ids).size!==N) return null;
+    return ids;
+  }
+  const challengeURL=code=>location.href.split('#')[0]+'#z='+code;
+  const setHash=code=>history.replaceState(null,'','#z='+code);
 
   // ================= SHARED STATE =================
   let mode='play';
@@ -377,6 +399,56 @@
     let m=0; p.forEach(id=>{ if(numByCell[id]) m=Math.max(m,numByCell[id]); });
     return m+1;
   };
+
+  // ================= CHALLENGE MODE =================
+  const LS_KEY='zipcube.challenges';
+  const loadStore=()=>{ try{ return JSON.parse(localStorage.getItem(LS_KEY))||{}; }catch(e){ return {}; } };
+  const saveRec=(code,rec)=>{ try{ const s=loadStore(); s[code]=rec; localStorage.setItem(LS_KEY,JSON.stringify(s)); }catch(e){} };
+  let challenge=null;         // {code, rec, running, startEpoch, attempt, finishMs}
+  let hintCooldownUntil=0;    // performance.now() deadline for the hint button
+  const fmtTime=ms=>{
+    const t=Math.max(0,Math.round(ms/100));
+    return `${Math.floor(t/600)}:${String(Math.floor(t/10)%60).padStart(2,'0')}.${t%10}`;
+  };
+  function armChallenge(){
+    const code=puzzleCode();
+    const rec=loadStore()[code]||{attempts:0, first:null, best:null, run:null};
+    challenge={code, rec, running:false, startEpoch:0, attempt:rec.attempts, finishMs:null};
+    hintCooldownUntil=0;
+    $('timeStat').hidden=false; $('pTime').textContent='–';
+  }
+  function persistRun(){
+    if(!challenge||!challenge.running) return;
+    challenge.rec.run={attempt:challenge.attempt, startEpoch:challenge.startEpoch, path:path.slice()};
+    saveRec(challenge.code, challenge.rec);
+  }
+  function startRun(){
+    challenge.rec.attempts++;
+    challenge.attempt=challenge.rec.attempts;
+    challenge.startEpoch=Date.now();
+    challenge.running=true; challenge.finishMs=null;
+    persistRun();
+  }
+  function endRun(solved){
+    if(!challenge||!challenge.running) return;
+    const ms=Date.now()-challenge.startEpoch;
+    if(challenge.attempt===1 && !challenge.rec.first)
+      challenge.rec.first = solved ? {t:ms} : {dnf:true};
+    if(solved){
+      challenge.finishMs=ms;
+      if(challenge.rec.best==null || ms<challenge.rec.best) challenge.rec.best=ms;
+      $('pTime').textContent=fmtTime(ms);
+    }
+    challenge.rec.run=null;
+    challenge.running=false;
+    hintCooldownUntil=0;
+    saveRec(challenge.code, challenge.rec);
+  }
+  function dropChallenge(){
+    if(challenge){ endRun(false); challenge=null; }
+    $('timeStat').hidden=true;
+    $('hintBtn').textContent='💡 Hint'; $('hintBtn').disabled=false;
+  }
 
   // ---- cube path rendering ----
   const pathGroup=new THREE.Group(); cube.add(pathGroup);
@@ -546,6 +618,7 @@
     }
     path.push(cell.id);
     hint.until=0;
+    if(challenge){ if(challenge.running) persistRun(); else startRun(); }
     viewsDirty=true; updateHud();
     if(path.length===24) userWin();
     return true;
@@ -555,9 +628,10 @@
     const i=path.indexOf(cell.id);
     if(i<0||i===path.length-1) return;
     path=path.slice(0,i+1);
+    persistRun();
     viewsDirty=true; updateHud();
   }
-  function popOne(){ if(path.length>1){ path.pop(); viewsDirty=true; updateHud(); } }
+  function popOne(){ if(path.length>1){ path.pop(); persistRun(); viewsDirty=true; updateHud(); } }
   function dragDraw(cell){
     if(!cell) return;
     if(path.length>1 && cell.id===path[path.length-2]) popOne();
@@ -572,6 +646,16 @@
   function userWin(){
     const h=hintsUsed?` — with ${hintsUsed} hint${hintsUsed>1?'s':''}`:'';
     $('winStats').textContent=`All 24 cells, 1 → ${N}, drawn by hand across three dimensions${h}.`;
+    if(challenge&&challenge.running){
+      endRun(true);
+      const rec=challenge.rec;
+      $('chalStats').textContent=
+        `⚡ ${fmtTime(challenge.finishMs)} · attempt ${challenge.attempt} · ${firstTryText(rec)}`
+        +(rec.best!=null?` · best ${fmtTime(rec.best)}`:'');
+      $('chalStats').hidden=false; $('copyResBtn').hidden=false;
+    } else {
+      $('chalStats').hidden=true; $('copyResBtn').hidden=true;
+    }
     $('win').classList.add('show');
   }
 
@@ -607,6 +691,10 @@
   }
   function doHint(){
     if(mode!=='play'||path.length===24) return;
+    if(challenge&&challenge.running){
+      if(performance.now()<hintCooldownUntil) return;
+      hintCooldownUntil=performance.now()+10000;
+    }
     hintsUsed++;
     const sol=solveFrom(path);
     if(sol){
@@ -799,12 +887,20 @@
     if(m===mode) return;
     if(m==='solver'){
       mode='solver';
+      let voided=false;
+      if(challenge&&challenge.running){
+        endRun(false);
+        path=[startCell]; resetRunState();
+        $('pTime').textContent='–';
+        voided=true;
+      }
       basePath=path.slice();
       document.body.classList.replace('play','solver');
       $('modeTag').textContent='ai solver — dfs from your position';
       $('modePlay').classList.remove('active'); $('modeSolver').classList.add('active');
       sizeCube(); sizeNet(); sizeTree();
       rebuildTrace();
+      if(voided) log('⚡ challenge attempt voided — the solver knows the answer');
     } else {
       mode='play'; playing=false;
       path=basePath.slice();
@@ -839,9 +935,34 @@
   // ---- controls ----
   $('undoBtn').onclick=popOne;
   $('hintBtn').onclick=doHint;
-  $('resetBtn').onclick=()=>{ path=[startCell]; viewsDirty=true; updateHud(); };
+  $('resetBtn').onclick=()=>{
+    if(challenge&&challenge.running){ endRun(false); $('pTime').textContent='–'; }
+    path=[startCell]; viewsDirty=true; updateHud();
+  };
+  async function copyText(txt,okMsg){
+    try{ await navigator.clipboard.writeText(txt); log(okMsg); }
+    catch(e){ prompt('Copy this:', txt); }
+  }
+  const firstTryText=rec=>rec.first ? (rec.first.dnf ? 'first try ✗' : `first try ${fmtTime(rec.first.t)}`) : '';
+  function resultText(){
+    let line=`Zip Cube ⚡ ${firstTryText(challenge.rec)}`;
+    if(challenge.attempt>1) line+=` · solved ${fmtTime(challenge.finishMs)} (attempt ${challenge.attempt})`;
+    return line+'\n'+challengeURL(challenge.code);
+  }
+  $('chalBtn').onclick=()=>{
+    if(challenge&&challenge.running) endRun(false);
+    setHash(puzzleCode());
+    armChallenge();
+    path=[startCell]; resetRunState();
+    hint={id:-1,until:0}; hintsUsed=0;
+    viewsDirty=true; updateHud();
+    copyText(challengeURL(challenge.code), '⚡ link copied — timer starts on your first move');
+  };
+  $('copyResBtn').onclick=()=>copyText(resultText(),'result copied — send it to your rivals');
   $('newBtn').onclick=()=>{
-    makePuzzle(); path=[startCell]; basePath=[startCell];
+    dropChallenge();
+    makePuzzle(); setHash(puzzleCode());
+    path=[startCell]; basePath=[startCell];
     resetRunState();
     hint={id:-1,until:0}; hintsUsed=0;
     $('win').classList.remove('show');
@@ -1001,6 +1122,16 @@
       onPath.fill(0); for(const id of path) onPath[id]=1;
       drawCubePath(); refreshTiles(); drawNet(); viewsDirty=false;
     }
+    if(challenge){
+      const left=hintCooldownUntil-performance.now();
+      const txt=left>0?`💡 ${Math.ceil(left/1000)}s`:'💡 Hint';
+      const hb=$('hintBtn');
+      if(hb.textContent!==txt){ hb.textContent=txt; hb.disabled=left>0; }
+      if(challenge.running){
+        const tt=fmtTime(Date.now()-challenge.startEpoch);
+        if($('pTime').textContent!==tt) $('pTime').textContent=tt;
+      }
+    }
     if(mode==='solver'){
       if(follow&&headNode>=0){
         const targetX=treePane.clientWidth*0.6 - nSlot[headNode]*DX*view.s;
@@ -1021,11 +1152,38 @@
     renderer.render(sceneG,camera);
   }
 
-  makePuzzle();
+  const bootHash=location.hash.match(/^#z=([0-9a-zA-Z]{6})$/);
+  const bootIds=bootHash?decodeCode(bootHash[1]):null;
+  const badLink=location.hash.startsWith('#z=')&&!bootIds;
+  if(bootIds) applyPuzzle(bootIds); else makePuzzle();
+  setHash(puzzleCode());
   path=[startCell]; basePath=[startCell];
+  if(bootIds){
+    armChallenge();
+    const r=challenge.rec.run;
+    if(r && Array.isArray(r.path) && r.path.length>=1 && r.path[0]===startCell
+       && r.path.every(id=>Number.isInteger(id)&&id>=0&&id<24)
+       && new Set(r.path).size===r.path.length
+       && Number.isFinite(r.startEpoch) && Number.isInteger(r.attempt)){
+      path=r.path.slice(); basePath=path.slice();
+      challenge.attempt=r.attempt; challenge.startEpoch=r.startEpoch; challenge.running=true;
+    }
+  }
   sizeCube(); sizeNet(); sizeTree();
-  log('draw on the cube — the mini net helps you peek around back');
+  log(badLink ? 'invalid challenge link — fresh random puzzle instead'
+              : 'draw on the cube — the mini net helps you peek around back');
   updateHud(); loop();
+  // debug hook for headless verification — read-only except arm()
+  window.__zip={
+    code:puzzleCode,
+    cells:cells.map(c=>({id:c.id, nbrIds:c.nbrIds.slice(), net:c.net})),
+    solution:()=>solveFrom(path),
+    arm:armChallenge,   // lets headless drivers arm a challenge on the boot puzzle
+    state:()=>({path:path.slice(), numByCell:{...numByCell}, startCell, hintsUsed,
+      challenge:challenge&&{code:challenge.code, running:challenge.running,
+        attempt:challenge.attempt, startEpoch:challenge.startEpoch,
+        rec:JSON.parse(JSON.stringify(challenge.rec))}}),
+  };
 })();
 </script>
 </body>
