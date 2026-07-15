@@ -43,6 +43,10 @@ Setting `viewsDirty=true` redraws cube tiles + net on the next frame; `treeDirty
 
 Three separate pointer handlers (cube, net, tree). On the cube and net, dragging from the path head extends the path ("draw"), dragging elsewhere rotates the cube (net: no-op); a tap on a visited cell truncates the path back to it. The tree canvas supports pan, pinch-zoom, and wheel-zoom, and auto-follows the search head unless the user pans.
 
+### First-time tutorial
+
+A six-step interactive tutorial (`tut`/`TUT_STEPS`/`tutNote`) layered on play mode. Input handlers emit `tutNote(t, id, src)` events (`'rotate'|'extend'|'undo'|'win'`, `src` `'cube'|'net'`); each step's `done(evt)` predicate advances the machine, and `skipIf()` lets a step auto-skip if already satisfied. Glow steps reuse the `hint` mechanism with `until:Infinity` (recomputed via `solveFrom` after every move) plus `faceCell()` auto-turn. The board is a fixed puzzle code (`TUT_CODE`) loaded through `decodeCode()`/`applyPuzzle()`. The banner UI is gated by a `body.tut` class. Auto-starts on boot only when the `zipcube.tutorial` localStorage key is absent *and* the page wasn't opened via a challenge link; finishing or skipping sets the key. Solver entry, Challenge, and New puzzle all call `tutEnd()`; Reset rewinds to step index 1. The `?` header button replays via `tutStart()`. Debug hooks: `__zip.tut()`, `__zip.startTutorial()`, `__zip.glow()`.
+
 ### Puzzle generation
 
 `makePuzzle()` finds a random Hamiltonian path (`hamiltonianPath()`, randomized Warnsdorff-ish DFS with restarts), then places N numbered checkpoints along it at roughly even indices. `numByCell` maps cell id → checkpoint number; `startCell` is checkpoint 1.

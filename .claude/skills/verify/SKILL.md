@@ -45,3 +45,15 @@ Chrome at `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`. Recipe
 
 - zsh: never `echo ===` in a command list — `=word` expansion aborts the whole line.
 - Don't skip the rAF throttle; without it the run times out (>2 min).
+- **Always stub modals first thing in the driver:** `window.prompt=()=>null; window.alert=()=>{}; window.confirm=()=>true;`
+  `copyText()`'s clipboard fallback calls `prompt()`, and a pending modal freezes
+  virtual time **forever** — the run wedges with an empty dump and no error. It's
+  flaky (depends on whether `navigator.clipboard.writeText` rejects before the
+  budget expires), so a driver that passed once can wedge the next run.
+- Keep drivers short (one flow each) and `--virtual-time-budget` modest (~2500–12000);
+  each throttled rAF tick costs a full SwiftShader render in real time.
+- A fresh profile auto-starts the first-time tutorial on boot (no `#z=` hash).
+  Click `#newBtn` or use `__zip.tut()`/`startTutorial()` to control it; pre-set
+  `localStorage['zipcube.tutorial']='done'` in a `<head>` script to suppress it.
+- Leftover headless Chromes from killed runs keep burning CPU and racing output
+  files — `pkill -f 'Google Chrome.*--headless'` before re-running.

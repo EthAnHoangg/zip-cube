@@ -38,6 +38,10 @@ Every puzzle is guaranteed solvable: the generator finds a random Hamiltonian pa
 
 Illegal moves flash red and tell you why (`reach 3 first`, `6 must be your last cell`). The mini-map is the answer to "what's behind the cube" — jumps that cross hidden geometry render as dashed arcs.
 
+### First visit? The game teaches itself
+
+A six-step interactive tutorial auto-starts on your first visit (and never again — it remembers via `localStorage`). It makes you *perform* each skill on a fixed practice board: spin the cube, draw from ①, chase checkpoints in order, undo a mistake, draw on the net, then finish the puzzle for real. The glowing-cell hint system guides every step; **Skip** bails out anytime, and the **?** button in the header replays it. Challenge links (`#z=…`) never hijack a first-timer into the tutorial — a race invitation stays a race.
+
 ## Challenge a friend
 
 Every puzzle has a 6-character code in the URL (`#z=…`) — the checkpoint layout itself, one base-36 character per cell. Hit **⚡ Challenge** to copy a link and race it yourself: the timer starts on your first move. Friends who open the link get the identical cube.
