@@ -341,6 +341,17 @@
     }
     return null;
   }
+  function applyPuzzle(chk){   // chk = checkpoint cell ids, index k → number k+1
+    numByCell={};
+    cells.forEach(c=>c.num=null);
+    chk.forEach((id,k)=>{ cells[id].num=k+1; numByCell[id]=k+1; });
+    rebuildBadges();
+    startCell=chk[0];
+    cells.forEach(c=>{
+      c.order=[...c.nbrIds];
+      for(let i=c.order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[c.order[i],c.order[j]]=[c.order[j],c.order[i]];}
+    });
+  }
   function makePuzzle(){
     let sol=hamiltonianPath();
     while(!sol) sol=hamiltonianPath();
@@ -351,18 +362,23 @@
       idxs.push(i);
     }
     idxs.push(23);
-    numByCell={};
-    cells.forEach(c=>c.num=null);
-    idxs.forEach((pi,k)=>{
-      const c=cells[sol[pi]]; c.num=k+1; numByCell[c.id]=k+1;
-    });
-    rebuildBadges();
-    startCell=sol[0];
-    cells.forEach(c=>{
-      c.order=[...c.nbrIds];
-      for(let i=c.order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[c.order[i],c.order[j]]=[c.order[j],c.order[i]];}
-    });
+    applyPuzzle(idxs.map(i=>sol[i]));
   }
+  // ---- challenge codes: the 6 checkpoint cell ids, one base36 char each ----
+  function puzzleCode(){
+    const byNum=new Array(N);
+    for(const id in numByCell) byNum[numByCell[id]-1]=Number(id);
+    return byNum.map(id=>id.toString(36)).join('');
+  }
+  function decodeCode(str){
+    if(typeof str!=='string' || str.length!==N) return null;
+    const ids=[...str.toLowerCase()].map(ch=>parseInt(ch,36));
+    if(ids.some(id=>!Number.isInteger(id)||id<0||id>23)) return null;
+    if(new Set(ids).size!==N) return null;
+    return ids;
+  }
+  const challengeURL=code=>location.href.split('#')[0]+'#z='+code;
+  const setHash=code=>history.replaceState(null,'','#z='+code);
 
   // ================= SHARED STATE =================
   let mode='play';
@@ -841,7 +857,8 @@
   $('hintBtn').onclick=doHint;
   $('resetBtn').onclick=()=>{ path=[startCell]; viewsDirty=true; updateHud(); };
   $('newBtn').onclick=()=>{
-    makePuzzle(); path=[startCell]; basePath=[startCell];
+    makePuzzle(); setHash(puzzleCode());
+    path=[startCell]; basePath=[startCell];
     resetRunState();
     hint={id:-1,until:0}; hintsUsed=0;
     $('win').classList.remove('show');
@@ -1021,11 +1038,23 @@
     renderer.render(sceneG,camera);
   }
 
-  makePuzzle();
+  const bootHash=location.hash.match(/^#z=([0-9a-zA-Z]{6})$/);
+  const bootIds=bootHash?decodeCode(bootHash[1]):null;
+  const badLink=location.hash.startsWith('#z=')&&!bootIds;
+  if(bootIds) applyPuzzle(bootIds); else makePuzzle();
+  setHash(puzzleCode());
   path=[startCell]; basePath=[startCell];
   sizeCube(); sizeNet(); sizeTree();
-  log('draw on the cube — the mini net helps you peek around back');
+  log(badLink ? 'invalid challenge link — fresh random puzzle instead'
+              : 'draw on the cube — the mini net helps you peek around back');
   updateHud(); loop();
+  // debug hook for headless verification — reads state, never mutates it
+  window.__zip={
+    code:puzzleCode,
+    cells:cells.map(c=>({id:c.id, nbrIds:c.nbrIds.slice(), net:c.net})),
+    solution:()=>solveFrom(path),
+    state:()=>({path:path.slice(), numByCell:{...numByCell}, startCell, hintsUsed}),
+  };
 })();
 </script>
 </body>
