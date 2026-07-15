@@ -14,6 +14,7 @@ Let friends compete on the identical puzzle to see who solves it faster, asynchr
 | Competition style | Async challenge links (Wordle-style), not real-time or hot-seat |
 | Scoring | Time only; timer starts on first move |
 | Retries | Allowed; shared result includes attempt number |
+| First attempt | Sacred: its outcome (time or ✗) is recorded permanently and always shown in the shared result |
 | Solver during a run | Voids the attempt (timer stops, path resets, attempt consumed) |
 | Hints during a run | Free, but hint button has a 10-second cooldown; free play unchanged |
 | Link format | Encode the puzzle itself (checkpoint placement), not an RNG seed |
@@ -38,6 +39,10 @@ Challenge state: `{ code, attempts, startTs, running }`.
 - Live display in the HUD as `m:ss.t`, alongside the existing progress counter, visible only while a challenge is active.
 - **Reset** abandons the current run; the next first move begins attempt N+1.
 - Attempt counts and personal-best times are stored in `localStorage` keyed by code, so they survive reloads.
+- **First attempt is permanent.** The outcome of attempt #1 is recorded once and never overwritten:
+  - solved on attempt #1 → its time is stored as the first-try result;
+  - attempt #1 ends any other way (reset, solver void, new puzzle, page reload mid-run) → the first-try result is finalized as **✗ (did not finish)** the moment the attempt ends or attempt #2 begins, whichever comes first.
+  - A reload *before the first move* has not started attempt #1, so nothing is finalized.
 - **New puzzle** during a challenge exits challenge mode (generates a fresh random puzzle and updates the hash to the new code — the new puzzle is itself immediately shareable, but the previous challenge's run ends).
 
 ## 3. Fairness rules
@@ -51,11 +56,19 @@ On solving during a challenge, the existing win overlay additionally shows:
 
 - final time (`m:ss.t`),
 - attempt number,
+- the permanent first-try result,
 - personal best for this code (from `localStorage`),
-- a **Copy result** button producing a paste-ready snippet:
+- a **Copy result** button producing a paste-ready snippet. The **first-try result always leads** — it is the headline number and cannot be omitted or replaced by a later, better time:
 
 ```
-Zip Cube ⚡ 0:47.3 · attempt 2
+Zip Cube ⚡ first try 0:47.3
+https://…/index.html#z=a3k9f2
+```
+
+If the first try failed and a later attempt solved it:
+
+```
+Zip Cube ⚡ first try ✗ · solved 1:12.0 (attempt 3)
 https://…/index.html#z=a3k9f2
 ```
 
@@ -80,6 +93,7 @@ No test framework exists; verification is manual in the browser (and headless vi
 1. Link round-trip: generate puzzle → copy link → open in fresh tab → identical checkpoint layout.
 2. Timer starts on first move, stops on solve; shown time matches wall clock.
 3. Reset + re-solve increments attempt number; attempts persist across reload.
+3b. First-try permanence: solve on attempt 1 → time locked in and shown in every later result; fail attempt 1 (reset, void, or reload mid-run) → first try locked as ✗ and later solves still show it.
 4. Entering solver mid-run voids the attempt and shows the toast.
 5. Hint cooldown counts down 10s during a run; hints unaffected in free play.
 6. Malformed `#z=` values fall back gracefully.
