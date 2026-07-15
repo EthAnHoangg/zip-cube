@@ -127,9 +127,9 @@
   .toggle input{accent-color:var(--ok);width:13px;height:13px}
   #progress{width:min(420px,90vw);height:3px;border-radius:2px;background:rgba(var(--fg-rgb),.14);overflow:hidden}
   #progressFill{height:100%;width:0%;background:var(--accent)}
-  #win{position:fixed;inset:0;z-index:10;display:none;align-items:center;justify-content:center;
+  #win,#lbView{position:fixed;inset:0;z-index:10;display:none;align-items:center;justify-content:center;
     background:rgba(var(--panel-rgb),.78);backdrop-filter:blur(4px)}
-  #win.show{display:flex}
+  #win.show,#lbView.show{display:flex}
   .card{background:var(--card);color:var(--card-ink);border-radius:20px;padding:26px 30px;
     text-align:center;max-width:290px;box-shadow:0 24px 60px rgba(0,0,0,.45)}
   .card h2{font-family:'Bungee',cursive;font-size:26px;color:var(--accent);margin-bottom:6px}
@@ -198,6 +198,7 @@
     <button id="resetBtn">Reset</button>
     <button id="hintBtn">💡 Hint</button>
     <button id="chalBtn">⚡ Challenge</button>
+    <button id="lbBtn" hidden>🏆</button>
   </div>
   <div class="row solverOnly">
     <button id="playBtn" class="primary">▶ Play</button>
@@ -229,6 +230,15 @@
     </div>
     <button id="copyResBtn" hidden>Copy result</button>
     <button id="againBtn" class="primary">New puzzle</button>
+  </div>
+</div>
+
+<div id="lbView">
+  <div class="card">
+    <h2>Standings</h2>
+    <p id="lbViewCode"></p>
+    <div id="lbViewRows"></div>
+    <button id="lbCloseBtn" class="primary" style="margin-top:14px">Close</button>
   </div>
 </div>
 
@@ -450,6 +460,7 @@
     challenge={code, rec, running:false, startEpoch:0, attempt:rec.attempts, finishMs:null};
     hintCooldownUntil=0;
     $('timeStat').hidden=false; $('pTime').textContent='–';
+    $('lbBtn').hidden=false;
   }
   function persistRun(){
     if(!challenge||!challenge.running) return;
@@ -481,6 +492,7 @@
   function dropChallenge(){
     if(challenge){ endRun(false); challenge=null; }
     $('timeStat').hidden=true;
+    $('lbBtn').hidden=true;
     $('hintBtn').textContent='💡 Hint'; $('hintBtn').disabled=false;
   }
 
@@ -1156,6 +1168,15 @@
     copyText(challengeURL(challenge.code), '⚡ link copied — timer starts on your first move');
   };
   $('copyResBtn').onclick=()=>copyText(resultText(),'result copied — send it to your rivals');
+  $('lbBtn').onclick=async()=>{
+    if(!challenge) return;
+    $('lbViewCode').textContent='puzzle '+challenge.code;
+    boardNote($('lbViewRows'),'…');
+    $('lbView').classList.add('show');
+    try{ renderBoard($('lbViewRows'),await lbGet(challenge.code)); }
+    catch(e){ boardNote($('lbViewRows'),'leaderboard unavailable'); }
+  };
+  $('lbCloseBtn').onclick=()=>$('lbView').classList.remove('show');
   $('newBtn').onclick=()=>{
     tutEnd();
     dropChallenge();
