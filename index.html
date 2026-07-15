@@ -170,6 +170,7 @@
     <button id="undoBtn">Undo</button>
     <button id="resetBtn">Reset</button>
     <button id="hintBtn">💡 Hint</button>
+    <button id="chalBtn">⚡ Challenge</button>
   </div>
   <div class="row solverOnly">
     <button id="playBtn" class="primary">▶ Play</button>
@@ -191,6 +192,8 @@
   <div class="card">
     <h2>Solved!</h2>
     <p id="winStats"></p>
+    <p id="chalStats" hidden></p>
+    <button id="copyResBtn" hidden>Copy result</button>
     <button id="againBtn" class="primary">New puzzle</button>
   </div>
 </div>
@@ -640,9 +643,18 @@
       log('only cells next to the path end');
   }
   function userWin(){
-    if(challenge&&challenge.running) endRun(true);
     const h=hintsUsed?` — with ${hintsUsed} hint${hintsUsed>1?'s':''}`:'';
     $('winStats').textContent=`All 24 cells, 1 → ${N}, drawn by hand across three dimensions${h}.`;
+    if(challenge&&challenge.running){
+      endRun(true);
+      const rec=challenge.rec;
+      $('chalStats').textContent=
+        `⚡ ${fmtTime(challenge.finishMs)} · attempt ${challenge.attempt} · ${firstTryText(rec)}`
+        +(rec.best!=null?` · best ${fmtTime(rec.best)}`:'');
+      $('chalStats').hidden=false; $('copyResBtn').hidden=false;
+    } else {
+      $('chalStats').hidden=true; $('copyResBtn').hidden=true;
+    }
     $('win').classList.add('show');
   }
 
@@ -926,6 +938,26 @@
     if(challenge&&challenge.running){ endRun(false); $('pTime').textContent='–'; }
     path=[startCell]; viewsDirty=true; updateHud();
   };
+  async function copyText(txt,okMsg){
+    try{ await navigator.clipboard.writeText(txt); log(okMsg); }
+    catch(e){ prompt('Copy this:', txt); }
+  }
+  const firstTryText=rec=>rec.first ? (rec.first.dnf ? 'first try ✗' : `first try ${fmtTime(rec.first.t)}`) : '';
+  function resultText(){
+    let line=`Zip Cube ⚡ ${firstTryText(challenge.rec)}`;
+    if(challenge.attempt>1) line+=` · solved ${fmtTime(challenge.finishMs)} (attempt ${challenge.attempt})`;
+    return line+'\n'+challengeURL(challenge.code);
+  }
+  $('chalBtn').onclick=()=>{
+    if(challenge&&challenge.running) endRun(false);
+    setHash(puzzleCode());
+    armChallenge();
+    path=[startCell]; resetRunState();
+    hint={id:-1,until:0}; hintsUsed=0;
+    viewsDirty=true; updateHud();
+    copyText(challengeURL(challenge.code), '⚡ link copied — timer starts on your first move');
+  };
+  $('copyResBtn').onclick=()=>copyText(resultText(),'result copied — send it to your rivals');
   $('newBtn').onclick=()=>{
     dropChallenge();
     makePuzzle(); setHash(puzzleCode());
