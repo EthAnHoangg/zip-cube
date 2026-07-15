@@ -134,6 +134,17 @@
     text-align:center;max-width:290px;box-shadow:0 24px 60px rgba(0,0,0,.45)}
   .card h2{font-family:'Bungee',cursive;font-size:26px;color:var(--accent);margin-bottom:6px}
   .card p{font-size:13.5px;margin-bottom:16px;color:var(--card-sub)}
+  #lbPanel{margin:-6px 0 14px}
+  #lbJoin{display:flex;gap:6px;justify-content:center;margin-bottom:8px}
+  #lbName{font-family:inherit;font-size:12px;padding:7px 9px;border-radius:10px;width:120px;
+    border:1px solid rgba(0,0,0,.25);background:transparent;color:var(--card-ink);user-select:text}
+  #lbJoinBtn{border-color:rgba(0,0,0,.25);color:var(--card-ink);background:transparent}
+  .lbRow{display:flex;gap:8px;align-items:baseline;font-size:11.5px;padding:3px 6px;border-radius:7px;
+    color:var(--card-sub);font-family:'Space Mono',monospace}
+  .lbRow b{font-family:'Space Grotesk',sans-serif;color:var(--card-ink);flex:1;text-align:left;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .lbRow.me{background:rgba(var(--ok-rgb),.16)}
+  .lbNote{font-size:11px;color:var(--card-sub);padding:4px 0}
 </style>
 </head>
 <body class="play">
@@ -209,6 +220,13 @@
     <h2>Solved!</h2>
     <p id="winStats"></p>
     <p id="chalStats" hidden></p>
+    <div id="lbPanel" hidden>
+      <div id="lbJoin" hidden>
+        <input id="lbName" maxlength="16" placeholder="nickname" autocomplete="off">
+        <button id="lbJoinBtn">Join board</button>
+      </div>
+      <div id="lbRows"></div>
+    </div>
     <button id="copyResBtn" hidden>Copy result</button>
     <button id="againBtn" class="primary">New puzzle</button>
   </div>
@@ -466,6 +484,86 @@
     $('hintBtn').textContent='💡 Hint'; $('hintBtn').disabled=false;
   }
 
+  // ---- leaderboard: per-code shared board via /api/leaderboard ----
+  const PLAYER_KEY='zipcube.player';
+  const savePlayer=p=>{ try{ localStorage.setItem(PLAYER_KEY,JSON.stringify(p)); }catch(e){} };
+  function getPlayer(){
+    let p=null;
+    try{ p=JSON.parse(localStorage.getItem(PLAYER_KEY)); }catch(e){}
+    if(!p||typeof p.deviceId!=='string'){
+      p={deviceId:Array.from({length:8},()=>Math.floor(Math.random()*36).toString(36)).join(''), name:null};
+      savePlayer(p);
+    }
+    return p;
+  }
+  async function lbCall(url,opts){
+    const ctrl=new AbortController();
+    const tm=setTimeout(()=>ctrl.abort(),5000);
+    try{
+      const r=await fetch(url,{...opts,signal:ctrl.signal});
+      if(!r.ok) throw new Error('http '+r.status);
+      return (await r.json()).entries||[];
+    } finally { clearTimeout(tm); }
+  }
+  const lbGet=code=>lbCall('api/leaderboard?code='+code);
+  function lbPost(code,rec,winPath){
+    const p=getPlayer();
+    return lbCall('api/leaderboard',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code, deviceId:p.deviceId, name:p.name,
+        first:rec.first, best:rec.best, attempts:rec.attempts, path:winPath})});
+  }
+  const lbSort=(a,b)=>{
+    const ft=e=>e.first&&!e.first.dnf?e.first.t:Infinity;
+    const bt=e=>e.best==null?Infinity:e.best;
+    return (ft(a)-ft(b)) || (bt(a)-bt(b)) || ((a.ts||0)-(b.ts||0));
+  };
+  function boardNote(el,msg){
+    el.textContent='';
+    const d=document.createElement('div'); d.className='lbNote'; d.textContent=msg;
+    el.appendChild(d);
+  }
+  function renderBoard(el,entries){
+    el.textContent='';                          // names rendered via textContent only
+    if(!entries.length){ boardNote(el,'no results yet — you could be first'); return; }
+    entries.sort(lbSort);
+    const mine=entries.findIndex(e=>e.deviceId===getPlayer().deviceId);
+    entries.forEach((e,i)=>{
+      if(i>=10&&i!==mine) return;
+      const row=document.createElement('div');
+      row.className='lbRow'+(i===mine?' me':'');
+      const rank=document.createElement('span'); rank.textContent=(i+1)+'.';
+      const nm=document.createElement('b'); nm.textContent=e.name;
+      const ft=document.createElement('span');
+      ft.textContent=e.first&&!e.first.dnf?fmtTime(e.first.t):'✗';
+      const meta=document.createElement('span');
+      meta.textContent=(e.best!=null?fmtTime(e.best):'–')+' ×'+e.attempts;
+      row.append(rank,nm,ft,meta);
+      el.appendChild(row);
+    });
+  }
+  let lastWin=null;   // {code, rec, path} of the most recent solved challenge run
+  async function showWinBoard(){
+    if(!lastWin){ $('lbPanel').hidden=true; return; }
+    const p=getPlayer();
+    $('lbPanel').hidden=false;
+    $('lbJoin').hidden=!!p.name;
+    boardNote($('lbRows'),'…');
+    try{
+      const entries=p.name ? await lbPost(lastWin.code,lastWin.rec,lastWin.path)
+                           : await lbGet(lastWin.code);
+      renderBoard($('lbRows'),entries);
+    }catch(e){
+      try{ renderBoard($('lbRows'),await lbGet(lastWin.code)); }   // POST failed (e.g. board full) — still show it
+      catch(e2){ boardNote($('lbRows'),'leaderboard unavailable'); }
+    }
+  }
+  $('lbJoinBtn').onclick=()=>{
+    const name=$('lbName').value.replace(/[\u0000-\u001f\u007f]/g,'').trim().slice(0,16);
+    if(!name) return;
+    const p=getPlayer(); p.name=name; savePlayer(p);
+    showWinBoard();
+  };
+
   // ---- cube path rendering ----
   const pathGroup=new THREE.Group(); cube.add(pathGroup);
   const segGeo=new THREE.CylinderGeometry(0.075,0.075,1,10);
@@ -672,8 +770,11 @@
         `⚡ ${fmtTime(challenge.finishMs)} · attempt ${challenge.attempt} · ${firstTryText(rec)}`
         +(rec.best!=null?` · best ${fmtTime(rec.best)}`:'');
       $('chalStats').hidden=false; $('copyResBtn').hidden=false;
+      lastWin={code:challenge.code, rec:challenge.rec, path:path.slice()};
+      showWinBoard();
     } else {
       $('chalStats').hidden=true; $('copyResBtn').hidden=true;
+      lastWin=null; $('lbPanel').hidden=true;
     }
     $('win').classList.add('show');
   }
