@@ -4,54 +4,62 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Zip Cube</title>
-<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Space+Grotesk:wght@400;500;700&family=Space+Mono&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Ubuntu+Sans:wght@400;500;700&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    /* ---- design tokens: dark (default) ---- */
-    --fg-rgb:239,230,207;      /* dim text, borders, chip fills — rgba(var(--fg-rgb),.NN) */
-    --panel-rgb:7,31,29;       /* translucent panel backgrounds */
+    /* ---- design tokens: dark (default) — slate night, soft-orange cord ---- */
+    --fg-rgb:234,239,239;      /* dim text, borders, chip fills — rgba(var(--fg-rgb),.NN) */
+    --panel-rgb:24,34,42;      /* translucent panel backgrounds */
     --ok-rgb:95,214,139;
-    --bg-hi:#0d3531; --bg-lo:#071f1d;
-    --text:#efe6cf; --log:#ffc98f;
-    --accent:#ff6b2c; --accent-ink:#1c0d04; --ok:#5fd68b;
-    --card:#efe6cf; --card-ink:#0a2724; --card-sub:#4a5a56;
+    --bg-hi:#314553; --bg-lo:#121a21;
+    --text:#eaefef; --log:#ffc49a;
+    --accent:#ff9b51; --accent-ink:#25343f; --ok:#5fd68b;
+    --card:#eaefef; --card-ink:#25343f; --card-sub:#55656f;
+    /* surfaces: dark = frosted glass, light overrides to elevated white */
+    --btn-bg:rgba(var(--fg-rgb),.07); --btn-border:rgba(var(--fg-rgb),.22);
+    --chip-border:rgba(var(--fg-rgb),.16); --lift:none;
     /* canvas + 3D tokens, read by JS readTokens() — keep these hex */
-    --cube-body:#0a2724;
-    --tile:#efe6cf; --tile-path:#ffc98f; --tile-hot:#a34b1e; --tile-bad:#e04f3f; --tile-hint:#a5e3bd;
-    --path:#ff6b2c; --path-solved:#5fd68b; --head-ring:#ffe3c2;
-    --badge-bg:#1b2b28; --badge-ink:#efe6cf;
-    --tree-active:#ff6b2c; --tree-back:#4a625d; --tree-prune:#2fbf9f; --tree-sol:#8df2b0; --tree-num:#071f1d;
+    --cube-body:#10181f;
+    --tile:#eaefef; --tile-path:#ffd9bd; --tile-hot:#a85d1e; --tile-bad:#e04f3f; --tile-hint:#a5e3bd;
+    --path:#ff9b51; --path-solved:#5fd68b; --head-ring:#ffe4cf;
+    --badge-bg:#16212a; --badge-ink:#eaefef;
+    --tree-active:#ff9b51; --tree-back:#5f707c; --tree-prune:#6f9fd8; --tree-sol:#8df2b0; --tree-num:#18222a;
   }
   body.light{
-    --fg-rgb:13,53,49;
-    --panel-rgb:247,240,221;
+    --fg-rgb:37,52,63;
+    --panel-rgb:191,201,209;
     --ok-rgb:31,138,77;
-    --bg-hi:#f7f0dd; --bg-lo:#e8ddc0;
-    --text:#0d3531; --log:#a1571f;
-    --ok:#1f8a4d;
-    --card:#fffcf3;
-    --path-solved:#1f8a4d; --head-ring:#7a3d12;
-    --tree-back:#7f9089; --tree-prune:#177f69; --tree-sol:#238f55;
+    --bg-hi:#eaefef; --bg-lo:#bfc9d1;
+    --text:#25343f; --log:#a05a1e;
+    --accent:#c9671a; --ok:#1f8a4d;
+    --card:#ffffff;
+    --tile:#ffffff;
+    --btn-bg:#ffffff; --btn-border:#c3ced6; --chip-border:#cdd6dd;
+    --lift:0 1px 3px rgba(37,52,63,.16),0 1px 2px rgba(37,52,63,.08);
+    --path:#c9671a; --path-solved:#1f8a4d; --head-ring:#6e3d12;
+    --tree-active:#c9671a; --tree-back:#98a5ae; --tree-prune:#2e6da4; --tree-sol:#238f55;
     --tile-hint:#7ccf9e;
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{height:100%;overflow:hidden}
   body{
-    font-family:'Space Grotesk',system-ui,sans-serif;
+    font-family:'Ubuntu Sans',system-ui,sans-serif;
     background:radial-gradient(120% 90% at 50% 20%, var(--bg-hi) 0%, var(--bg-lo) 100%);
     color:var(--text); touch-action:none; user-select:none;
     display:flex; flex-direction:column;
   }
   header{display:flex;align-items:center;justify-content:space-between;gap:4px 10px;
     flex-wrap:wrap;padding:8px 14px 4px;flex:0 0 auto}
-  .wordmark{font-family:'Bungee',cursive;font-size:18px}
+  .wordmark{font-family:'Bungee',sans-serif;font-size:18px}
   .wordmark sup{color:var(--accent);font-size:11px}
-  .wordmark small{display:block;font-family:'Space Grotesk';font-size:9.5px;letter-spacing:1.4px;
+  .wordmark small{display:block;font-family:'Ubuntu Sans',sans-serif;font-size:9.5px;letter-spacing:1.4px;
     text-transform:uppercase;color:rgba(var(--fg-rgb),.55)}
   .hud{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap;justify-content:flex-end;
     min-width:0;margin-left:auto}
   #themeBtn,#helpBtn{padding:2px 10px;font-size:14px;line-height:1;border-radius:9px;
-    background:rgba(var(--fg-rgb),.07);border:1px solid rgba(var(--fg-rgb),.16)}
+    background:var(--btn-bg);border:1px solid var(--chip-border);box-shadow:var(--lift)}
   #tutBanner{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:6;
     display:none;width:min(92%,340px);background:var(--card);color:var(--card-ink);
     border-radius:14px;padding:10px 12px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
@@ -64,9 +72,9 @@
   #tutSkip{padding:5px 10px;font-size:11px;background:transparent;
     border:1px solid rgba(0,0,0,.18);color:var(--card-sub)}
   .stats{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
-  .stat{background:rgba(var(--fg-rgb),.07);border:1px solid rgba(var(--fg-rgb),.16);
+  .stat{background:var(--btn-bg);border:1px solid var(--chip-border);box-shadow:var(--lift);
     border-radius:9px;padding:2px 8px;font-size:10px;white-space:nowrap;text-align:center}
-  .stat b{display:block;font-family:'Space Mono',monospace;font-size:12.5px;color:var(--accent)}
+  .stat b{display:block;font-family:'Ubuntu Mono',monospace;font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--accent)}
   .stat b span{font-size:12.5px}
   .stat.pr b{color:var(--ok)}
 
@@ -89,12 +97,12 @@
   #netExpand{
     position:absolute;top:4px;right:4px;z-index:5;
     font-size:11px;line-height:1;padding:6px 8px;border-radius:9px;
-    background:rgba(var(--fg-rgb),.1);border:1px solid rgba(var(--fg-rgb),.2);
+    background:var(--btn-bg);border:1px solid var(--chip-border);box-shadow:var(--lift);
   }
   .paneTag{position:absolute;top:6px;left:9px;font-size:9px;letter-spacing:1.2px;
     text-transform:uppercase;color:rgba(var(--fg-rgb),.45);pointer-events:none;z-index:2}
 
-  #logline{flex:0 0 auto;text-align:center;font-family:'Space Mono',monospace;font-size:11px;
+  #logline{flex:0 0 auto;text-align:center;font-family:'Ubuntu Mono',monospace;font-size:11px;
     color:var(--log);padding:3px 12px;min-height:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #treePane{flex:1 1 auto;position:relative;margin:0 8px;
     border:1px solid rgba(var(--fg-rgb),.14);border-radius:12px;background:rgba(var(--panel-rgb),.45);overflow:hidden}
@@ -110,14 +118,16 @@
   body.play .solverOnly{display:none!important}
   body.solver .playOnly{display:none!important}
   button{font-family:inherit;font-size:12px;font-weight:700;padding:8px 12px;border-radius:10px;
-    border:1px solid rgba(var(--fg-rgb),.22);background:rgba(var(--fg-rgb),.07);color:var(--text);cursor:pointer}
+    border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--text);
+    box-shadow:var(--lift);cursor:pointer}
   button:active{transform:scale(.96)}
   button:disabled{opacity:.45;cursor:default}
   button:disabled:active{transform:none}
   button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
   button.on{background:rgba(var(--ok-rgb),.2);border-color:var(--ok);color:var(--ok)}
   button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  .seg{display:flex;border:1px solid rgba(var(--fg-rgb),.22);border-radius:11px;overflow:hidden}
+  .seg{display:flex;border:1px solid var(--btn-border);border-radius:11px;overflow:hidden;
+    background:var(--btn-bg);box-shadow:var(--lift)}
   .seg button{border:none;border-radius:0;background:transparent;padding:8px 14px}
   .seg button.active{background:var(--accent);color:var(--accent-ink)}
   .speed{display:flex;align-items:center;gap:5px;font-size:10.5px;color:rgba(var(--fg-rgb),.7)}
@@ -132,7 +142,7 @@
   #win.show,#lbView.show{display:flex}
   .card{background:var(--card);color:var(--card-ink);border-radius:20px;padding:26px 30px;
     text-align:center;max-width:290px;box-shadow:0 24px 60px rgba(0,0,0,.45)}
-  .card h2{font-family:'Bungee',cursive;font-size:26px;color:var(--accent);margin-bottom:6px}
+  .card h2{font-family:'Bungee',sans-serif;font-size:26px;color:var(--accent);margin-bottom:6px}
   .card p{font-size:13.5px;margin-bottom:16px;color:var(--card-sub)}
   #lbPanel{margin:-6px 0 14px}
   #lbJoin{display:flex;gap:6px;justify-content:center;margin-bottom:8px}
@@ -140,19 +150,20 @@
     border:1px solid rgba(0,0,0,.25);background:transparent;color:var(--card-ink);user-select:text}
   #lbJoinBtn{border-color:rgba(0,0,0,.25);color:var(--card-ink);background:transparent}
   .lbRow{display:flex;gap:7px;align-items:baseline;font-size:12.5px;padding:4px 8px;border-radius:8px;
-    color:var(--card-sub);font-family:'Space Mono',monospace;white-space:nowrap}
-  .lbRow b{font-family:'Space Grotesk',sans-serif;color:var(--card-ink);flex:1;text-align:left;
+    color:var(--card-sub);font-family:'Ubuntu Mono',monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .lbRow b{font-family:'Ubuntu Sans',sans-serif;color:var(--card-ink);flex:1;text-align:left;
     overflow:hidden;text-overflow:ellipsis;min-width:0}
   .lbRow .rank{min-width:20px;text-align:right}
   .lbRow .num{min-width:60px;text-align:right}
   .lbRow .tries{min-width:36px;text-align:right}
-  .lbRow.lbHead{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.2px;
+  .lbRow.lbHead{font-family:'Ubuntu Sans',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.2px;
     text-transform:uppercase;color:var(--card-sub);opacity:.8;padding-top:0;padding-bottom:1px}
   .lbRow.lbHead b{font-size:9px;color:var(--card-sub)}
   .lbRow.me{background:rgba(var(--ok-rgb),.16)}
   .lbNote{font-size:11px;color:var(--card-sub);padding:4px 0}
   #win .card{max-width:330px}
   #lbView .card{width:min(92vw,390px);max-width:none}
+  #lbViewCode{font-family:'Ubuntu Mono',monospace;font-size:12.5px}
 </style>
 </head>
 <body class="play">
@@ -269,7 +280,7 @@
       tileHot:new THREE.Color(v('--tile-hot')), tileBad:new THREE.Color(v('--tile-bad')),
       tileHint:new THREE.Color(v('--tile-hint')),
       path:v('--path'), pathSolved:v('--path-solved'), headRing:v('--head-ring'),
-      accent:v('--accent'), badgeBg:v('--badge-bg'), badgeInk:v('--badge-ink'),
+      accent:v('--accent'), accentInk:v('--accent-ink'), badgeBg:v('--badge-bg'), badgeInk:v('--badge-ink'),
       netTag:`rgba(${fg},0.4)`, treeLine:`rgba(${fg},0.28)`, treeNum:v('--tree-num'),
       treeCol:{1:v('--tree-active'),2:v('--tree-back'),3:v('--tree-prune'),4:v('--tree-sol')},
     };
@@ -284,9 +295,9 @@
   const sceneG = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
   camera.position.set(0, 0, 6.2);
-  sceneG.add(new THREE.HemisphereLight(0xfff6e6, 0x14342f, 0.95));
+  sceneG.add(new THREE.HemisphereLight(0xf4f7f8, 0x2a3a46, 0.95));
   const dl = new THREE.DirectionalLight(0xffffff, .75); dl.position.set(3,5,6); sceneG.add(dl);
-  const dl2 = new THREE.DirectionalLight(0xffe0b8, .25); dl2.position.set(-4,-2,-5); sceneG.add(dl2);
+  const dl2 = new THREE.DirectionalLight(0xd7e0e6, .25); dl2.position.set(-4,-2,-5); sceneG.add(dl2);
   const cube = new THREE.Group(); sceneG.add(cube);
   cube.quaternion.setFromEuler(new THREE.Euler(0.42, -0.62, 0));
   const bodyMat=new THREE.MeshLambertMaterial({color:T.cubeBody});
@@ -338,9 +349,10 @@
     const cv=document.createElement('canvas'); cv.width=cv.height=128;
     const g=cv.getContext('2d');
     g.beginPath(); g.arc(64,64,54,0,Math.PI*2);
+    const ink=isLast?T.accentInk:T.badgeInk;   // dark ink on the accent badge, light ink on the rest
     g.fillStyle=isLast?T.accent:T.badgeBg; g.fill();
-    g.lineWidth=7; g.strokeStyle=T.badgeInk; g.stroke();
-    g.fillStyle=T.badgeInk; g.font='700 60px "Space Grotesk",sans-serif';
+    g.lineWidth=7; g.strokeStyle=ink; g.stroke();
+    g.fillStyle=ink; g.font='700 60px "Ubuntu Sans",sans-serif';
     g.textAlign='center'; g.textBaseline='middle'; g.fillText(n,64,68);
     const t=new THREE.CanvasTexture(cv); t.anisotropy=4; return t;
   }
@@ -589,10 +601,10 @@
   // ---- cube path rendering ----
   const pathGroup=new THREE.Group(); cube.add(pathGroup);
   const segGeo=new THREE.CylinderGeometry(0.075,0.075,1,10);
-  const dotGeo=new THREE.SphereGeometry(0.1,14,12);
+  const dotGeo=new THREE.SphereGeometry(0.075,14,12);
   const headGeo=new THREE.SphereGeometry(0.14,16,14);
   const jointGeo=new THREE.SphereGeometry(0.075,10,8);
-  const pathMat=new THREE.MeshLambertMaterial({color:T.path});
+  const pathMat=new THREE.MeshBasicMaterial({color:T.path});   // unlit: the cord reads as drawn ink, not lit plastic
   let headMesh=null;
   function resetRunState(){ heat=new Uint32Array(24); solvedNow=false; pathMat.color.set(T.path); }
   const lift=c=>c.center.clone().addScaledVector(c.normal,0.09);
@@ -667,7 +679,7 @@
       g.fill();
     });
     g.fillStyle=T.netTag;
-    g.font=`700 ${Math.max(6,cs*0.28)}px "Space Grotesk",sans-serif`;
+    g.font=`700 ${Math.max(6,cs*0.28)}px "Ubuntu Sans",sans-serif`;
     g.textAlign='left'; g.textBaseline='top';
     FACE_TAGS.forEach(f=>{
       g.fillText(f.t, NM.ox+f.bc*2*cs+cs*0.12, NM.oy+(5-(f.br*2+1))*cs+cs*0.08);
@@ -722,10 +734,11 @@
       if(!c.num) return;
       const p=netPx(c), r=cs*0.26;
       g.beginPath(); g.arc(p.x,p.y,r,0,Math.PI*2);
+      const ink=c.num===N?T.accentInk:T.badgeInk;
       g.fillStyle=c.num===N?T.accent:T.badgeBg; g.fill();
-      g.lineWidth=Math.max(1,cs*0.05); g.strokeStyle=T.badgeInk; g.stroke();
-      g.fillStyle=T.badgeInk;
-      g.font=`700 ${Math.max(7,cs*0.32)}px "Space Grotesk",sans-serif`;
+      g.lineWidth=Math.max(1,cs*0.05); g.strokeStyle=ink; g.stroke();
+      g.fillStyle=ink;
+      g.font=`700 ${Math.max(7,cs*0.32)}px "Ubuntu Sans",sans-serif`;
       g.textAlign='center'; g.textBaseline='middle';
       g.fillText(c.num, p.x, p.y+0.5);
     });
@@ -1049,7 +1062,7 @@
     }
     if(dx>9){
       tCtx.fillStyle=T.treeNum;
-      tCtx.font=`700 ${Math.max(7,8.5*s*1.4)}px "Space Mono",monospace`;
+      tCtx.font=`700 ${Math.max(7,8.5*s*1.4)}px "Ubuntu Mono",monospace`;
       tCtx.textAlign='center'; tCtx.textBaseline='middle';
       for(let i=i0;i<i1;i++){
         const num=numByCell[nCell[i]];
@@ -1390,6 +1403,9 @@
   const badLink=location.hash.startsWith('#z=')&&!bootIds;
   if(bootIds) applyPuzzle(bootIds); else makePuzzle();
   setHash(puzzleCode());
+  // badge/net/tree text is baked into canvases; re-bake once webfonts arrive
+  if(document.fonts&&document.fonts.ready)
+    document.fonts.ready.then(()=>{ rebuildBadges(); viewsDirty=true; treeDirty=true; });
   path=[startCell]; basePath=[startCell];
   if(bootIds){
     armChallenge();

@@ -65,8 +65,8 @@ Switch to **🤖 AI solver** at any moment and the solver picks up *from your cu
 
 It runs a depth-first search with one classic pruning rule, and every decision is animated across three synchronized views:
 
-- **The cube & net** — the path grows and retracts live; tiles accumulate a **heat map** (ivory → burnt orange, log scale) showing where the search churned.
-- **The search tree** — every node is one push. Orange = current path, gray = backtracked, teal = **pruned**, green = the solution spine. Pan, pinch, scroll-zoom, or let it auto-follow the search head.
+- **The cube & net** — the path grows and retracts live; tiles accumulate a **heat map** (off-white → burnt orange, log scale) showing where the search churned.
+- **The search tree** — every node is one push. Orange = current path, gray = backtracked, blue = **pruned**, green = the solution spine. Pan, pinch, scroll-zoom, or let it auto-follow the search head.
 - **The counters** — pushes, backtracks, prunes, depth, and a progress bar over the whole trace.
 
 ### The pruning checkbox is the whole lesson
@@ -79,13 +79,13 @@ The search runs to completion **up front** and records a trace of events; the an
 
 ## Theming
 
-![Light theme — the same board on warm paper, toggled with the ☀/☾ button in the header](docs/images/play-light.png)
+![Light theme — the same board on cool paper-white, toggled with the ☀/☾ button in the header](docs/images/play-light.png)
 
 All colors — CSS chrome, Three.js materials, badge textures, both 2D canvases — resolve through **semantic design tokens** (CSS custom properties) defined once in `:root` and overridden per theme:
 
 ```css
 body.light {
-  --bg-hi:#f7f0dd; --text:#0d3531; --path-solved:#1f8a4d; /* … */
+  --bg-hi:#eaefef; --text:#25343f; --path-solved:#1f8a4d; /* … */
 }
 ```
 

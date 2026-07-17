@@ -21,7 +21,11 @@ All state and logic live inside the single IIFE in the `<script>` block. The boa
 
 ### Design tokens (theming)
 
-Every color is a semantic CSS custom property on `:root` (dark) overridden by `body.light` — including the 3D/canvas colors (`--cube-body`, `--tile*`, `--path*`, `--badge-*`, `--tree-*`). JS never hardcodes a color: `readTokens()` caches the tokens into `T` (THREE.Color for 3D, strings for canvas) once per theme switch, and `applyTheme()` retints materials, rebuilds badge textures (`rebuildBadges()` — colors are baked into canvas textures), and marks views dirty. Alpha-composed colors use triplet tokens (`rgba(var(--fg-rgb),.NN)`). Adding a theme = one CSS override block, zero JS changes. Mode switching must use `classList` (not `className=`) so the `light` class survives.
+Every color is a semantic CSS custom property on `:root` (dark) overridden by `body.light` — including the 3D/canvas colors (`--cube-body`, `--tile*`, `--path*`, `--badge-*`, `--tree-*`). JS never hardcodes a color: `readTokens()` caches the tokens into `T` (THREE.Color for 3D, strings for canvas) once per theme switch, and `applyTheme()` retints materials, rebuilds badge textures (`rebuildBadges()` — colors are baked into canvas textures), and marks views dirty. Alpha-composed colors use triplet tokens (`rgba(var(--fg-rgb),.NN)`). Surface chrome (buttons, chips, panels) uses `--btn-bg`/`--btn-border`/`--chip-border`/`--lift`: frosted glass in dark, elevated white with shadows in light — a light theme needs opaque surfaces, not translucency. Adding a theme = one CSS override block, zero JS changes. Mode switching must use `classList` (not `className=`) so the `light` class survives.
+
+### Typography
+
+Three Google Fonts with strict roles: **Ubuntu Sans** (400/500/700) for all UI text and canvas-baked labels (cube badges, net numbers/face letters), **Ubuntu Mono** (400/700) for data — stat values, `#logline`, leaderboard times, puzzle codes, tree-canvas labels — and **Bungee** for display only (wordmark, card titles). Sans and mono are sibling families; keep that pairing if swapping. Text baked into canvases (`badgeTexture()`, net/tree draw calls) hardcodes the family in `ctx.font` strings — a font change must touch those too, and boot re-bakes them once via `document.fonts.ready` since webfonts arrive after first paint.
 
 ### Two modes, shared state
 
@@ -33,7 +37,7 @@ Every color is a semantic CSS custom property on `:root` (dark) overridden by `b
 
 ### Three synchronized views, one dirty flag
 
-1. **3D cube** (Three.js): tiles, number badges (canvas textures), and the path drawn as cylinders/spheres in `pathGroup`; edge-crossing segments bend through the shared midpoint (`sharedMid`).
+1. **3D cube** (Three.js): tiles, number badges (canvas textures), and the path drawn as cylinders/spheres in `pathGroup` with an *unlit* material (`MeshBasicMaterial`) so the cord reads as drawn ink, not lit plastic; edge-crossing segments bend through the shared midpoint (`sharedMid`).
 2. **Net mini-map** (2D canvas `#netCanvas`): same state drawn on the unfolded cross; non-adjacent-on-net jumps render as dashed curves.
 3. **Search tree** (2D canvas `#treeCanvas`, solver only): flat parallel arrays (`nSlot/nDepth/nParent/nCell/nState/nKids`) instead of node objects for performance; leaf-slot x-layout, viewport culling via `lowerBound`, and point decimation when >15k visible nodes.
 
