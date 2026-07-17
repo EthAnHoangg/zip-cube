@@ -4,7 +4,7 @@ A [LinkedIn-Zip](https://www.linkedin.com/games/zip)-style path puzzle, lifted o
 
 The entire game is one self-contained HTML file. No build step, no install, no framework beyond Three.js from a CDN. Open `index.html` in a browser and play.
 
-![Play mode — drawing a path on the 3D cube, with the numbered checkpoints and the net mini-map](docs/images/play-dark.png)
+![Play mode — dark theme, drawing a path on the 3D cube with numbered checkpoints and the net mini-map](docs/images/play-dark.png)
 
 ---
 
@@ -57,11 +57,13 @@ Zip Cube ⚡ first try 0:47.3
 
 No accounts — results travel by copy-paste. And if the deployment has the leaderboard configured, every challenge link also gets a **shared leaderboard**: solve the puzzle, join with a nickname on your first win, and the win card (plus the 🏆 button while a challenge is armed) shows everyone's results for that code, ranked by first-try time. Without a network or backend the game plays exactly the same — the board just says "leaderboard unavailable".
 
+![Challenge standings — per-puzzle leaderboard ranked by first-try time, with puzzle code and player results](docs/images/challenge.png)
+
 ## The AI solver
 
 Switch to **🤖 AI solver** at any moment and the solver picks up *from your current position* — it never touches your board; switch back and your hand-drawn path is exactly where you left it.
 
-![Solver mode after finding a solution — the green path wrapped around the cube and traced on the net, the search tree showing backtracked and pruned branches, and counters reading 1,773 pushes / 960 backtracks / 790 prunes](docs/images/solver.png)
+![Solver mode mid-search — path growing on the cube and net, search tree with backtracked and pruned branches, and live push/backtrack/prune counters](docs/images/solver.png)
 
 It runs a depth-first search with one classic pruning rule, and every decision is animated across three synchronized views:
 
@@ -79,7 +81,7 @@ The search runs to completion **up front** and records a trace of events; the an
 
 ## Theming
 
-![Light theme — the same board on cool paper-white, toggled with the ☀/☾ button in the header](docs/images/play-light.png)
+![Play mode — light theme, same board on cool paper-white, toggled with the ☀/☾ button in the header](docs/images/play-light.png)
 
 All colors — CSS chrome, Three.js materials, badge textures, both 2D canvases — resolve through **semantic design tokens** (CSS custom properties) defined once in `:root` and overridden per theme:
 
@@ -97,7 +99,7 @@ JS reads the tokens once per switch (`readTokens()` → cached `T` object), reti
 index.html                       the whole game (markup, styles, logic)
 api/leaderboard.js               per-challenge leaderboard (Vercel function + Upstash Redis)
 docs/puzzle-and-solver.md        deep dive: generator & solver algorithms
-docs/images/                     README screenshots
+docs/images/                     README screenshots (play, solver, challenge standings)
 docs/superpowers/specs/          design docs
 .claude/skills/verify/SKILL.md   headless-Chrome verification recipe
 CLAUDE.md                        architecture notes for AI-assisted development
