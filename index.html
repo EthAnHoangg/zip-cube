@@ -65,17 +65,22 @@
     min-width:0;margin-left:auto}
   #themeBtn,#helpBtn{padding:2px 10px;font-size:14px;line-height:1;border-radius:9px;
     background:var(--btn-bg);border:1px solid var(--chip-border);box-shadow:var(--lift)}
-  #tutBanner{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:6;
+  #tutBanner,#chalBanner{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:6;
     display:none;width:min(92%,340px);background:var(--card);color:var(--card-ink);
     border-radius:14px;padding:10px 12px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
   body.tut #tutBanner{display:block}
+  #chalBanner.show{display:block}
+  #chalBanner b{color:var(--accent)}
+  #chalText{font-size:12.5px;font-weight:500;line-height:1.35}
+  body.tut #timeStat,body.tut #lbBtn{display:none}
   #tutText{font-size:12.5px;font-weight:500;line-height:1.35}
   #tutFoot{display:flex;align-items:center;justify-content:space-between;margin-top:7px}
   #tutDots i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;
     background:var(--card-sub);opacity:.35}
   #tutDots i.on{background:var(--accent);opacity:1}
-  #tutSkip{padding:5px 10px;font-size:11px;background:transparent;
+  #tutSkip,#chalOk{padding:5px 10px;font-size:11px;background:transparent;
     border:1px solid rgba(0,0,0,.18);color:var(--card-sub)}
+  #chalBanner #chalOk{display:block;margin:7px 0 0 auto}
   .stats{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
   .stat{background:var(--btn-bg);border:1px solid var(--chip-border);box-shadow:var(--lift);
     border-radius:9px;padding:2px 8px;font-size:10px;white-space:nowrap;text-align:center}
@@ -190,7 +195,8 @@
   #lbJoin{display:flex;gap:6px;justify-content:center;margin-bottom:8px}
   #lbName{font-family:inherit;font-size:12px;padding:7px 9px;border-radius:10px;width:120px;
     border:1px solid rgba(0,0,0,.25);background:transparent;color:var(--card-ink);user-select:text}
-  #lbJoinBtn{border-color:rgba(0,0,0,.25);color:var(--card-ink);background:transparent}
+  #lbJoinBtn,#copyResBtn{border-color:rgba(0,0,0,.25);color:var(--card-ink);background:transparent;box-shadow:none}
+  .cardBtns{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap}
   .lbRow{display:flex;gap:7px;align-items:baseline;font-size:12.5px;padding:4px 8px;border-radius:8px;
     color:var(--card-sub);font-family:'Ubuntu Mono',monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
   .lbRow b{font-family:'Ubuntu Sans',sans-serif;color:var(--card-ink);flex:1;text-align:left;
@@ -216,7 +222,7 @@
     <div class="stats playOnly">
       <div class="stat">next <b id="pNext">2</b></div>
       <div class="stat">filled <b><span id="pFilled">1</span>/24</b></div>
-      <div class="stat" id="timeStat" hidden>time <b id="pTime">–</b></div>
+      <div class="stat" id="timeStat">time <b id="pTime">–</b></div>
     </div>
     <div class="stats solverOnly">
       <div class="stat">pushes<b id="sPush">0</b></div>
@@ -233,6 +239,12 @@
   <div id="tutBanner">
     <div id="tutText"></div>
     <div id="tutFoot"><span id="tutDots"></span><button id="tutSkip">Skip</button></div>
+  </div>
+  <div id="chalBanner">
+    <div id="chalText"><b>⚡ You've been challenged!</b> Your first finished try sets your rank.
+      The timer starts on your first move — study the cube as long as you like first.
+      Reset and the AI solver void your first try.</div>
+    <button id="chalOk">Got it</button>
   </div>
   <div id="netPane">
     <div class="paneTag">net</div>
@@ -267,7 +279,7 @@
     <button id="chalBtn" class="key">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h8l-1 8 11-12h-9l1-8z"/></svg>
       Challenge</button>
-    <button id="lbBtn" class="key" aria-label="standings" hidden>
+    <button id="lbBtn" class="key" aria-label="standings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4"/><path d="M7 4h10v6a5 5 0 0 1-10 0V4z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/></svg></button>
   </div>
   <div class="row solverOnly">
@@ -311,8 +323,11 @@
       </div>
       <div id="lbRows"></div>
     </div>
-    <button id="copyResBtn" hidden>Copy result</button>
-    <button id="againBtn" class="key primary">New puzzle</button>
+    <div class="cardBtns">
+      <button id="copyResBtn" hidden>Copy result</button>
+      <button id="retryBtn" class="key">Try again</button>
+      <button id="againBtn" class="key primary">New puzzle</button>
+    </div>
   </div>
 </div>
 
@@ -528,7 +543,11 @@
     return m+1;
   };
 
-  // ================= CHALLENGE MODE =================
+  // ================= RUN RECORDING =================
+  // Every puzzle is a challenge: a local record starts on the first move, so a
+  // board's true first try is locked in before anyone decides to share it.
+  // Posting to the shared board stays opt-in (nickname). Only the tutorial is
+  // unrecorded (challenge===null while tut.active).
   const LS_KEY='zipcube.challenges';
   const loadStore=()=>{ try{ return JSON.parse(localStorage.getItem(LS_KEY))||{}; }catch(e){ return {}; } };
   const saveRec=(code,rec)=>{ try{ const s=loadStore(); s[code]=rec; localStorage.setItem(LS_KEY,JSON.stringify(s)); }catch(e){} };
@@ -543,8 +562,17 @@
     const rec=loadStore()[code]||{attempts:0, first:null, best:null, run:null};
     challenge={code, rec, running:false, startEpoch:0, attempt:rec.attempts, finishMs:null};
     hintCooldownUntil=0;
-    $('timeStat').hidden=false; $('pTime').textContent='–';
-    $('lbBtn').hidden=false;
+    $('pTime').textContent='–';
+  }
+  // first try still undecided → the actions below would permanently mark it ✗
+  const firstTryAtStake=()=>!!(challenge && !challenge.rec.first);
+  let confirmArm={key:null,until:0};   // two-tap confirm for first-try-voiding actions
+  function confirmTwice(key,msg){
+    const now=performance.now();
+    if(confirmArm.key===key && now<confirmArm.until){ confirmArm={key:null,until:0}; return true; }
+    confirmArm={key,until:now+4000};
+    log(msg+' — tap again to confirm');
+    return false;
   }
   function persistRun(){
     if(!challenge||!challenge.running) return;
@@ -552,6 +580,7 @@
     saveRec(challenge.code, challenge.rec);
   }
   function startRun(){
+    $('chalBanner').classList.remove('show');
     challenge.rec.attempts++;
     challenge.attempt=challenge.rec.attempts;
     challenge.startEpoch=Date.now();
@@ -573,11 +602,11 @@
     hintCooldownUntil=0;
     saveRec(challenge.code, challenge.rec);
   }
-  function dropChallenge(){
-    if(challenge){ endRun(false); challenge=null; }
-    $('timeStat').hidden=true;
-    $('lbBtn').hidden=true;
+  function suspendRecord(){   // tutorial only: end any live run, then pause recording
+    if(challenge){ if(challenge.running) endRun(false); challenge=null; }
+    hintCooldownUntil=0;
     $('hintLabel').textContent='Hint'; $('hintBtn').disabled=false;
+    $('pTime').textContent='–';
   }
 
   // ---- leaderboard: per-code shared board via /api/leaderboard ----
@@ -651,7 +680,12 @@
                            : await lbGet(lastWin.code);
       renderBoard($('lbRows'),entries);
     }catch(e){
-      try{ renderBoard($('lbRows'),await lbGet(lastWin.code)); }   // POST failed (e.g. board full) — still show it
+      try{
+        renderBoard($('lbRows'),await lbGet(lastWin.code));        // POST failed (e.g. board full) — still show it
+        const d=document.createElement('div'); d.className='lbNote';
+        d.textContent='your score couldn’t be posted'+(String(e).includes('409')?' — board is full':'');
+        $('lbRows').appendChild(d);
+      }
       catch(e2){ boardNote($('lbRows'),'leaderboard unavailable'); }
     }
   }
@@ -938,6 +972,7 @@
   const tutSeen=()=>{ try{ return !!localStorage.getItem(TUT_LS); }catch(e){ return true; } };
   const tutMark=()=>{ try{ localStorage.setItem(TUT_LS,'done'); }catch(e){} };
   let tut={active:false, step:0};
+  let tutReturn=null;   // puzzle code the tutorial replaced — restored on tutEnd
   const TUT_STEPS=[
     {text:'Drag anywhere on the cube to spin it around.',
      done:e=>e.t==='rotate'},
@@ -982,7 +1017,9 @@
   }
   function tutStart(){
     if(mode==='solver') setMode('play');
-    dropChallenge();
+    tutReturn=challenge?challenge.code:puzzleCode();
+    suspendRecord();
+    $('chalBanner').classList.remove('show');
     const ids=decodeCode(TUT_CODE);
     if(ids) applyPuzzle(ids); else makePuzzle();
     setHash(puzzleCode());
@@ -1002,6 +1039,14 @@
     tutMark();
     document.body.classList.remove('tut');
     if(hint.until===Infinity) hint={id:-1,until:0};
+    const ids=tutReturn&&decodeCode(tutReturn); tutReturn=null;
+    if(ids){                     // bring back the board the tutorial replaced
+      applyPuzzle(ids); setHash(puzzleCode());
+      path=[startCell]; basePath=[startCell];
+      resetRunState(); hintsUsed=0;
+      armChallenge();
+      updateHud();
+    }
     viewsDirty=true;
   }
 
@@ -1188,13 +1233,18 @@
         $('pTime').textContent='–';
         voided=true;
       }
+      if(challenge&&!challenge.rec.first){   // seeing the answer forfeits a cold first try
+        challenge.rec.first={dnf:true};
+        saveRec(challenge.code, challenge.rec);
+        voided=true;
+      }
       basePath=path.slice();
       document.body.classList.replace('play','solver');
       $('modeTag').textContent='ai solver — dfs from your position';
       $('modePlay').classList.remove('active'); $('modeSolver').classList.add('active');
       sizeCube(); sizeNet(); sizeTree();
       rebuildTrace();
-      if(voided) log('⚡ challenge attempt voided — the solver knows the answer');
+      if(voided) log('⚡ first try marked ✗ — the solver knows the answer');
     } else {
       mode='play'; playing=false;
       path=basePath.slice();
@@ -1208,7 +1258,11 @@
     }
   }
   $('modePlay').onclick=()=>setMode('play');
-  $('modeSolver').onclick=()=>setMode('solver');
+  $('modeSolver').onclick=()=>{
+    if(mode!=='solver' && firstTryAtStake()
+       && !confirmTwice('solver','⚠ the solver reveals the answer: your first try will count ✗')) return;
+    setMode('solver');
+  };
 
   function updateHud(){
     if(mode==='play'){
@@ -1231,14 +1285,18 @@
   $('undoBtn').onclick=popOne;
   $('hintBtn').onclick=doHint;
   $('resetBtn').onclick=()=>{
-    if(challenge&&challenge.running){ endRun(false); $('pTime').textContent='–'; }
+    if(challenge&&challenge.running){
+      if(firstTryAtStake()
+         && !confirmTwice('reset','⚠ reset ends your first try: it will count ✗')) return;
+      endRun(false); $('pTime').textContent='–';
+    }
     path=[startCell];
     if(tut.active){ if(tut.step>1) tut.step=1; tutShow(); }
     viewsDirty=true; updateHud();
   };
-  async function copyText(txt,okMsg){
+  async function copyText(txt,okMsg,failMsg){
     try{ await navigator.clipboard.writeText(txt); log(okMsg); }
-    catch(e){ prompt('Copy this:', txt); }
+    catch(e){ log(failMsg||'⚠ copy failed'); }
   }
   const firstTryText=rec=>rec.first ? (rec.first.dnf ? 'first try ✗' : `first try ${fmtTime(rec.first.t)}`) : '';
   function resultText(){
@@ -1246,16 +1304,12 @@
     if(challenge.attempt>1) line+=` · solved ${fmtTime(challenge.finishMs)} (attempt ${challenge.attempt})`;
     return line+'\n'+challengeURL(challenge.code);
   }
-  $('chalBtn').onclick=()=>{
-    tutEnd();
-    if(challenge&&challenge.running) endRun(false);
-    setHash(puzzleCode());
-    armChallenge();
-    path=[startCell]; resetRunState();
-    hint={id:-1,until:0}; hintsUsed=0;
-    viewsDirty=true; updateHud();
-    copyText(challengeURL(challenge.code), '⚡ link copied — timer starts on your first move');
-  };
+  // pure share: copies the link and touches nothing — safe to press mid-run.
+  // The board's record already started on the first move, so the sharer's own
+  // first try is honest: no studying a board and then arming it fresh.
+  $('chalBtn').onclick=()=>copyText(challengeURL(challenge?challenge.code:puzzleCode()),
+    '⚡ link copied — their first try counts, and yours already does',
+    '⚠ copy blocked — share the link from the address bar');
   $('copyResBtn').onclick=()=>copyText(resultText(),'result copied — send it to your rivals');
   $('lbBtn').onclick=async()=>{
     if(!challenge) return;
@@ -1267,16 +1321,33 @@
   };
   $('lbCloseBtn').onclick=()=>$('lbView').classList.remove('show');
   $('newBtn').onclick=()=>{
+    if(challenge&&challenge.running){
+      if(firstTryAtStake()
+         && !confirmTwice('new','⚠ leaving ends your first try: it will count ✗')) return;
+      endRun(false);
+    }
     tutEnd();
-    dropChallenge();
     makePuzzle(); setHash(puzzleCode());
+    armChallenge();
     path=[startCell]; basePath=[startCell];
     resetRunState();
     hint={id:-1,until:0}; hintsUsed=0;
     $('win').classList.remove('show');
+    $('chalBanner').classList.remove('show');
     if(mode==='solver') rebuildTrace(); else { log('new puzzle — start at 1'); viewsDirty=true; updateHud(); }
   };
   $('againBtn').onclick=()=>$('newBtn').onclick();
+  $('retryBtn').onclick=()=>{           // same board, next attempt — chase your best
+    $('win').classList.remove('show');
+    path=[startCell]; basePath=[startCell];
+    resetRunState();
+    hint={id:-1,until:0}; hintsUsed=0;
+    $('pTime').textContent='–';
+    log('same board — timer starts on your first move');
+    viewsDirty=true; updateHud();
+  };
+  $('win').onclick=e=>{ if(e.target.id==='win') $('win').classList.remove('show'); };
+  $('lbView').onclick=e=>{ if(e.target.id==='lbView') $('lbView').classList.remove('show'); };
   $('playBtn').onclick=()=>{ if(ptr>=trace.length) resetPlayback(); playing=!playing; updateHud(); };
   $('stepBtn').onclick=()=>{ playing=false; if(ptr<trace.length) applyEvent(trace[ptr++]); updateHud(); };
   $('restartBtn').onclick=resetPlayback;
@@ -1294,8 +1365,12 @@
     rebuildBadges();
     viewsDirty=true; treeDirty=true;
   }
-  $('tutSkip').onclick=()=>{ tutEnd(); $('newBtn').onclick(); };
-  $('helpBtn').onclick=tutStart;
+  $('tutSkip').onclick=()=>{ tutEnd(); log('your puzzle is back — start at 1'); };
+  $('helpBtn').onclick=()=>{
+    if(challenge&&challenge.running&&firstTryAtStake()
+       && !confirmTwice('help','⚠ the tutorial ends your first try: it will count ✗')) return;
+    tutStart();
+  };
   $('themeBtn').onclick=()=>{
     const light=document.body.classList.toggle('light');
     $('themeBtn').textContent=light?'☾':'☀';
@@ -1472,8 +1547,8 @@
   if(document.fonts&&document.fonts.ready)
     document.fonts.ready.then(()=>{ rebuildBadges(); viewsDirty=true; treeDirty=true; });
   path=[startCell]; basePath=[startCell];
-  if(bootIds){
-    armChallenge();
+  armChallenge();
+  {
     const r=challenge.rec.run;
     if(r && Array.isArray(r.path) && r.path.length>=1 && r.path[0]===startCell
        && r.path.every(id=>Number.isInteger(id)&&id>=0&&id<24)
@@ -1487,6 +1562,10 @@
   log(badLink ? 'invalid challenge link — fresh random puzzle instead'
               : 'draw on the cube — the mini net helps you peek around back');
   updateHud();
+  // a link to a board this device has never touched → brief the challenged player
+  if(bootIds && !challenge.running && challenge.rec.attempts===0 && !challenge.rec.first)
+    $('chalBanner').classList.add('show');
+  $('chalOk').onclick=()=>$('chalBanner').classList.remove('show');
   if(!bootIds && !tutSeen()) tutStart();
   loop();
   // debug hook for headless verification — read-only except arm()
