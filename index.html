@@ -195,7 +195,8 @@
   #lbJoin{display:flex;gap:6px;justify-content:center;margin-bottom:8px}
   #lbName{font-family:inherit;font-size:12px;padding:7px 9px;border-radius:10px;width:120px;
     border:1px solid rgba(0,0,0,.25);background:transparent;color:var(--card-ink);user-select:text}
-  #lbJoinBtn{border-color:rgba(0,0,0,.25);color:var(--card-ink);background:transparent}
+  #lbJoinBtn,#copyResBtn{border-color:rgba(0,0,0,.25);color:var(--card-ink);background:transparent;box-shadow:none}
+  .cardBtns{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap}
   .lbRow{display:flex;gap:7px;align-items:baseline;font-size:12.5px;padding:4px 8px;border-radius:8px;
     color:var(--card-sub);font-family:'Ubuntu Mono',monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
   .lbRow b{font-family:'Ubuntu Sans',sans-serif;color:var(--card-ink);flex:1;text-align:left;
@@ -322,9 +323,11 @@
       </div>
       <div id="lbRows"></div>
     </div>
-    <button id="copyResBtn" hidden>Copy result</button>
-    <button id="retryBtn" class="key">Try again</button>
-    <button id="againBtn" class="key primary">New puzzle</button>
+    <div class="cardBtns">
+      <button id="copyResBtn" hidden>Copy result</button>
+      <button id="retryBtn" class="key">Try again</button>
+      <button id="againBtn" class="key primary">New puzzle</button>
+    </div>
   </div>
 </div>
 
