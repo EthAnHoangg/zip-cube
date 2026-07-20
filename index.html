@@ -195,6 +195,19 @@
     .key,.iconKey{transition:none}
     .dock .playOnly,.dock .solverOnly{animation:none}
   }
+  /* small screens: net big enough to play on, data readable at arm's length */
+  @media (max-width:480px){
+    #netPane{width:min(58%,250px)}
+    .stat b,.stat b span{font-size:14px}
+  }
+  /* coarse pointers: every control at or near the 44px touch guideline */
+  @media (pointer:coarse){
+    .iconKey{width:40px;height:40px}
+    .key{padding:11px 13px}
+    .key.door{width:44px;padding:11px 0}
+    #modeBtn,body.solver #modeBtn{padding:11px 13px}
+    #netExpand{padding:10px 12px}
+  }
   .speed{display:flex;align-items:center;gap:5px;font-size:10.5px;color:rgba(var(--fg-rgb),.7)}
   input[type=range]{width:100px;accent-color:var(--accent)}
   .toggle{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;
