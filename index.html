@@ -405,7 +405,21 @@
   cube.add(new THREE.Mesh(new THREE.BoxGeometry(2.02,2.02,2.02), bodyMat));
   function sizeCube(){
     const w=pane.clientWidth, h=pane.clientHeight;
-    camera.aspect=w/h; camera.updateProjectionMatrix();
+    camera.aspect=w/h;
+    // portrait play: reserve the compact net's strip so the cube sits above it
+    let reserve=0;
+    if(h>w && mode==='play'){
+      const netW=Math.min(w*(w<=480?0.58:0.46),250);
+      reserve=netW*0.75+18;
+    }
+    // dolly back so the cube fits the narrower of the two view cones (fov is vertical)
+    const vHalf=camera.fov/2*Math.PI/180;
+    const hUse=Math.max(h-reserve,120);
+    const vUse=Math.atan(Math.tan(vHalf)*hUse/h);
+    const hHalf=Math.atan(Math.tan(vHalf)*w/h);
+    camera.position.z=6.2*Math.max(1,Math.sin(vHalf)/Math.sin(Math.min(vUse,hHalf)));
+    camera.updateProjectionMatrix();
+    sceneG.position.y=reserve/2*(2*camera.position.z*Math.tan(vHalf)/h);
     renderer.setSize(w,h);
   }
 
