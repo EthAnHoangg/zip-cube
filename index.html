@@ -196,10 +196,14 @@
     .key,.iconKey{transition:none}
     .dock .playOnly,.dock .solverOnly{animation:none}
   }
-  /* small screens: net big enough to play on, data readable at arm's length */
+  /* small screens: net big enough to play on, data readable at arm's length.
+     solver's cube pane is short — there the net shrinks to stop covering the board.
+     :not(.big) keeps the expanded state winning these mode-scoped widths. */
   @media (max-width:480px){
-    #netPane{width:min(58%,250px)}
+    body.play #netPane:not(.big){width:min(58%,250px)}
+    body.solver #netPane:not(.big){width:min(36%,160px)}
     .stat b,.stat b span{font-size:14px}
+    .hudSep{display:none}
   }
   /* coarse pointers: every control at or near the 44px touch guideline */
   @media (pointer:coarse){
