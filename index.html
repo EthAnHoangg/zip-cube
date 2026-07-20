@@ -21,9 +21,11 @@
     /* surfaces: dark = frosted glass, light overrides to elevated white */
     --btn-bg:rgba(var(--fg-rgb),.07); --btn-border:rgba(var(--fg-rgb),.22);
     --chip-border:rgba(var(--fg-rgb),.16); --lift:none;
-    /* keycap controls: raised tile + hard edge, recessed seg track */
-    --key-bg:#26323d; --key-edge:#0d151c; --track-bg:rgba(0,0,0,.28);
+    /* keycap controls: raised tile + hard edge */
+    --key-bg:#26323d; --key-edge:#0d151c;
     --accent-edge:#c4691c;
+    /* in-place confirm state: opaque red keycap, same surface in both themes */
+    --danger:#c8402f; --danger-edge:#8a2b1f;
     /* canvas + 3D tokens, read by JS readTokens() — keep these hex */
     --cube-body:#10181f;
     --tile:#eaefef; --tile-path:#ffd9bd; --tile-hot:#a85d1e; --tile-bad:#e04f3f; --tile-hint:#a5e3bd;
@@ -42,7 +44,7 @@
     --tile:#ffffff;
     --btn-bg:#ffffff; --btn-border:#c3ced6; --chip-border:#cdd6dd;
     --lift:0 1px 3px rgba(37,52,63,.16),0 1px 2px rgba(37,52,63,.08);
-    --key-bg:#ffffff; --key-edge:#b6c2cb; --track-bg:#ccd6dd;
+    --key-bg:#ffffff; --key-edge:#b6c2cb;
     --accent-edge:#93490f;
     --path:#c9671a; --path-solved:#1f8a4d; --head-ring:#6e3d12;
     --tree-active:#c9671a; --tree-back:#98a5ae; --tree-prune:#2e6da4; --tree-sol:#238f55;
@@ -62,10 +64,18 @@
   .wordmark sup{color:var(--accent);font-size:11px}
   .wordmark small{display:block;font-family:'Ubuntu Sans',sans-serif;font-size:9.5px;letter-spacing:1.4px;
     text-transform:uppercase;color:rgba(var(--fg-rgb),.55)}
-  .hud{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap;justify-content:flex-end;
+  .hud{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;
     min-width:0;margin-left:auto}
-  #themeBtn,#helpBtn{padding:2px 10px;font-size:14px;line-height:1;border-radius:9px;
-    background:var(--btn-bg);border:1px solid var(--chip-border);box-shadow:var(--lift)}
+  /* header icon keycaps: same pressable language as the dock, sized for touch */
+  .iconKey{width:34px;height:34px;padding:0;display:inline-flex;align-items:center;justify-content:center;
+    border-radius:10px;border:1px solid var(--key-edge);background:var(--key-bg);
+    box-shadow:0 2px 0 var(--key-edge);transition:transform .06s ease,box-shadow .06s ease}
+  .iconKey svg{width:15px;height:15px}
+  .iconKey:not(:disabled):active{transform:translateY(2px);box-shadow:0 0 0 var(--key-edge)}
+  .hudSep{width:1px;align-self:stretch;margin:4px 3px;background:rgba(var(--fg-rgb),.18)}
+  #themeBtn .ic-moon{display:none}
+  body.light #themeBtn .ic-sun{display:none}
+  body.light #themeBtn .ic-moon{display:block}
   #tutBanner,#chalBanner{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:6;
     display:none;width:min(92%,340px);background:var(--card);color:var(--card-ink);
     border-radius:14px;padding:10px 12px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
@@ -73,7 +83,7 @@
   #chalBanner.show{display:block}
   #chalBanner b{color:var(--accent)}
   #chalText{font-size:12.5px;font-weight:500;line-height:1.35}
-  body.tut #timeStat,body.tut #lbBtn{display:none}
+  body.tut #timeStat,body.tut #lbBtn,body.tut #chalBtn{display:none}
   #tutText{font-size:12.5px;font-weight:500;line-height:1.35}
   #tutFoot{display:flex;align-items:center;justify-content:space-between;margin-top:7px}
   #tutDots i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;
@@ -125,7 +135,12 @@
 
   footer{flex:0 0 auto;display:flex;flex-direction:column;gap:6px;align-items:center;
     padding:7px 12px calc(8px + env(safe-area-inset-bottom))}
-  .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center}
+  /* the dock: safe run verbs left, costly doors right — position encodes stakes */
+  .dock{display:flex;align-items:center;flex-wrap:wrap;gap:8px;width:min(100%,720px);justify-content:center}
+  .dockGrp{display:flex;align-items:center;gap:6px}
+  .doors{margin-left:auto;gap:7px}
+  @keyframes dockIn{from{opacity:0;transform:translateY(9px)}to{opacity:1}}
+  .dock .playOnly,.dock .solverOnly{animation:dockIn .28s cubic-bezier(.2,.8,.3,1)}
   body.play .solverOnly{display:none!important}
   body.solver .playOnly{display:none!important}
   button{font-family:inherit;font-size:12px;font-weight:700;padding:8px 12px;border-radius:10px;
@@ -150,31 +165,35 @@
   .key.primary{background:var(--accent);border-color:var(--accent-edge);color:var(--accent-ink);
     box-shadow:0 3px 0 var(--accent-edge)}
   .key.primary:not(:disabled):active{box-shadow:0 0 0 var(--accent-edge)}
+  /* doors: rare actions that void or leave the run — quiet outlines, set apart from the verbs */
+  .key.door{width:40px;padding:9px 0;justify-content:center;background:transparent;
+    border-color:var(--btn-border);box-shadow:none;color:rgba(var(--fg-rgb),.8)}
+  .key.door:not(:disabled):active{transform:scale(.93);box-shadow:none}
+  /* mode door: labeled — it's the marquee feature; accent "Back to play" keycap in solver */
+  #modeBtn{width:auto;padding:9px 13px}
+  #modeBtn .ic-back,#modeBtn .backLbl{display:none}
+  body.solver #modeBtn .botLbl{display:none}
+  body.solver #modeBtn{width:auto;padding:9px 13px;background:var(--accent);border-color:var(--accent-edge);
+    color:var(--accent-ink);box-shadow:0 3px 0 var(--accent-edge)}
+  body.solver #modeBtn:not(:disabled):active{transform:translateY(3px);box-shadow:0 0 0 var(--accent-edge)}
+  body.solver #modeBtn .ic-bot{display:none}
+  body.solver #modeBtn .ic-back{display:block}
+  body.solver #modeBtn .backLbl{display:inline}
+  /* in-place two-tap confirm: the pressed button itself turns red and asks */
+  .key.confirm,.iconKey.confirm{width:auto;height:auto;padding:9px 13px;font-size:11px;font-weight:700;
+    letter-spacing:.06em;text-transform:uppercase;background:var(--danger);border-color:var(--danger-edge);
+    color:#fff;box-shadow:0 3px 0 var(--danger-edge)}
+  .key.confirm>*,.iconKey.confirm>*{display:none}
+  .key.confirm::after,.iconKey.confirm::after{content:attr(data-confirm)}
+  .key.confirm:not(:disabled):active,.iconKey.confirm:not(:disabled):active{
+    transform:translateY(3px);box-shadow:0 0 0 var(--danger-edge)}
   #playBtn .ic-pause{display:none}
   #playBtn.playing .ic-pause{display:block}
   #playBtn.playing .ic-play{display:none}
 
-  /* mode switch: recessed track + sliding accent keycap */
-  .seg{position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;
-    border-radius:13px;border:1px solid var(--key-edge);background:var(--track-bg);
-    box-shadow:inset 0 2px 4px rgba(0,0,0,.25)}
-  .seg button{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;
-    gap:7px;border:none;border-radius:9px;background:transparent;box-shadow:none;
-    font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
-    padding:8px 13px;color:rgba(var(--fg-rgb),.6);transition:color .2s ease}
-  .seg button svg{width:13px;height:13px;flex:0 0 auto}
-  .seg button:active{transform:none}
-  .seg button.active{background:var(--accent);color:var(--accent-ink)}
-  @supports selector(:has(*)){
-    .seg button.active{background:transparent}
-    .seg::before{content:'';position:absolute;z-index:0;top:4px;left:4px;bottom:4px;
-      width:calc(50% - 4px);border-radius:9px;background:var(--accent);
-      box-shadow:0 1px 0 var(--accent-edge);
-      transition:transform .25s cubic-bezier(.35,1.3,.4,1)}
-    .seg:has(#modeSolver.active)::before{transform:translateX(100%)}
-  }
   @media (prefers-reduced-motion:reduce){
-    .key,.seg::before,.seg button{transition:none}
+    .key,.iconKey{transition:none}
+    .dock .playOnly,.dock .solverOnly{animation:none}
   }
   .speed{display:flex;align-items:center;gap:5px;font-size:10.5px;color:rgba(var(--fg-rgb),.7)}
   input[type=range]{width:100px;accent-color:var(--accent)}
@@ -231,8 +250,16 @@
       <div class="stat pr">prunes<b id="sPrune">0</b></div>
       <div class="stat">depth<b><span id="sDepth">0</span>/24</b></div>
     </div>
-    <button id="helpBtn" aria-label="replay tutorial">?</button>
-    <button id="themeBtn" aria-label="switch color theme">☀</button>
+    <button id="chalBtn" class="iconKey" aria-label="copy challenge link" title="Copy challenge link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h8l-1 8 11-12h-9l1-8z"/></svg></button>
+    <button id="lbBtn" class="iconKey" aria-label="standings" title="Standings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4"/><path d="M7 4h10v6a5 5 0 0 1-10 0V4z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/></svg></button>
+    <span class="hudSep" aria-hidden="true"></span>
+    <button id="helpBtn" class="iconKey" aria-label="replay tutorial" title="Replay tutorial" data-confirm="Tutorial? ✗ first try">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M9.2 9.2a2.8 2.8 0 0 1 5.4.9c0 1.9-2.6 2.3-2.6 3.7"/><path d="M12 17.1v.01"/></svg></button>
+    <button id="themeBtn" class="iconKey" aria-label="switch color theme" title="Switch theme">
+      <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.4"/><path d="M12 2.2v2.3M12 19.5v2.3M2.2 12h2.3M19.5 12h2.3M5.1 5.1l1.6 1.6M17.3 17.3l1.6 1.6M18.9 5.1l-1.6 1.6M6.7 17.3l-1.6 1.6"/></svg>
+      <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.2A8.2 8.2 0 1 1 10.8 3.4a6.4 6.4 0 0 0 9.8 9.8z"/></svg></button>
   </div>
 </header>
 
@@ -267,48 +294,42 @@
 
 <footer>
   <div id="progress" class="solverOnly"><div id="progressFill"></div></div>
-  <div class="row playOnly">
-    <button id="undoBtn" class="key">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-4"/></svg>
-      Undo</button>
-    <button id="resetBtn" class="key">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4v6h6"/><path d="M3.5 15a9 9 0 1 0 2.1-9.4L2 10"/></svg>
-      Reset</button>
-    <button id="hintBtn" class="key">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 21h5"/><path d="M12 3a6 6 0 0 1 3.9 10.6c-.6.5-.9 1.2-.9 2v.9H9v-.9c0-.8-.3-1.5-.9-2A6 6 0 0 1 12 3z"/></svg>
-      <span id="hintLabel">Hint</span></button>
-    <button id="chalBtn" class="key">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h8l-1 8 11-12h-9l1-8z"/></svg>
-      Challenge</button>
-    <button id="lbBtn" class="key" aria-label="standings">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4"/><path d="M7 4h10v6a5 5 0 0 1-10 0V4z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/></svg></button>
-  </div>
-  <div class="row solverOnly">
-    <button id="playBtn" class="key primary">
-      <svg class="ic-play" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5 20 12 7 19.5z"/></svg>
-      <svg class="ic-pause" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
-      <span id="playLabel">Play</span></button>
-    <button id="stepBtn" class="key">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 5.5 15 12 5 18.5z"/><path d="M16.5 5h2.5v14h-2.5z"/></svg>
-      Step</button>
-    <button id="restartBtn" class="key">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4v6h-6"/><path d="M20.5 15a9 9 0 1 1-2.1-9.4L22 10"/></svg>
-      Replay</button>
-    <label class="toggle"><input type="checkbox" id="pruneChk" checked> pruning</label>
-    <div class="speed">slow <input type="range" id="speed" min="0" max="100" value="40"> fast</div>
-  </div>
-  <div class="row">
-    <div class="seg">
-      <button id="modePlay" class="active">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 21 7.5v9l-9 5-9-5v-9l9-5z"/><path d="m12 12 9-4.5M12 12 3 7.5M12 12v9.5"/></svg>
-        Play</button>
-      <button id="modeSolver">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v5m0 0-6 6m6-6 6 6M6 14v6m12-6v6"/></svg>
-        AI solver</button>
+  <div class="dock">
+    <div class="dockGrp playOnly">
+      <button id="undoBtn" class="key">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-4"/></svg>
+        Undo</button>
+      <button id="hintBtn" class="key">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 21h5"/><path d="M12 3a6 6 0 0 1 3.9 10.6c-.6.5-.9 1.2-.9 2v.9H9v-.9c0-.8-.3-1.5-.9-2A6 6 0 0 1 12 3z"/></svg>
+        <span id="hintLabel">Hint</span></button>
     </div>
-    <button id="newBtn" class="key">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="8.6" cy="8.6" r=".9" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r=".9" fill="currentColor" stroke="none"/><circle cx="15.4" cy="15.4" r=".9" fill="currentColor" stroke="none"/></svg>
-      New puzzle</button>
+    <div class="dockGrp solverOnly">
+      <button id="playBtn" class="key primary">
+        <svg class="ic-play" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5 20 12 7 19.5z"/></svg>
+        <svg class="ic-pause" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+        <span id="playLabel">Play</span></button>
+      <button id="stepBtn" class="key">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 5.5 15 12 5 18.5z"/><path d="M16.5 5h2.5v14h-2.5z"/></svg>
+        Step</button>
+      <button id="restartBtn" class="key">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4v6h-6"/><path d="M20.5 15a9 9 0 1 1-2.1-9.4L22 10"/></svg>
+        Replay</button>
+    </div>
+    <div class="dockGrp solverOnly">
+      <label class="toggle"><input type="checkbox" id="pruneChk" checked> pruning</label>
+      <div class="speed">slow <input type="range" id="speed" min="0" max="100" value="40"> fast</div>
+    </div>
+    <div class="dockGrp doors">
+      <button id="resetBtn" class="key door playOnly" aria-label="reset board" title="Reset board" data-confirm="Reset? ✗ first try">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4v6h6"/><path d="M3.5 15a9 9 0 1 0 2.1-9.4L2 10"/></svg></button>
+      <button id="newBtn" class="key door" aria-label="new puzzle" title="New puzzle" data-confirm="New board? ✗ first try">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="8.6" cy="8.6" r=".9" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r=".9" fill="currentColor" stroke="none"/><circle cx="15.4" cy="15.4" r=".9" fill="currentColor" stroke="none"/></svg></button>
+      <button id="modeBtn" class="key door" aria-label="AI solver" title="Watch the AI solve it" data-confirm="See answer? ✗ first try">
+        <svg class="ic-bot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v5m0 0-6 6m6-6 6 6M6 14v6m12-6v6"/></svg>
+        <span class="botLbl">Solver</span>
+        <svg class="ic-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+        <span class="backLbl">Back to play</span></button>
+    </div>
   </div>
 </footer>
 
@@ -567,12 +588,19 @@
   }
   // first try still undecided → the actions below would permanently mark it ✗
   const firstTryAtStake=()=>!!(challenge && !challenge.rec.first);
-  let confirmArm={key:null,until:0};   // two-tap confirm for first-try-voiding actions
-  function confirmTwice(key,msg){
-    const now=performance.now();
-    if(confirmArm.key===key && now<confirmArm.until){ confirmArm={key:null,until:0}; return true; }
-    confirmArm={key,until:now+4000};
-    log(msg+' — tap again to confirm');
+  // two-tap confirm, in place: the pressed button turns red and asks (CSS .confirm
+  // swaps its content for data-confirm); the logline carries the why
+  let confirmBtn=null, confirmTimer=0;
+  function disarmConfirm(){
+    if(confirmBtn) confirmBtn.classList.remove('confirm');
+    confirmBtn=null; clearTimeout(confirmTimer);
+  }
+  function confirmTwice(btn,msg){
+    if(confirmBtn===btn){ disarmConfirm(); return true; }
+    disarmConfirm();
+    confirmBtn=btn; btn.classList.add('confirm');
+    confirmTimer=setTimeout(disarmConfirm,4000);
+    log(msg);
     return false;
   }
   function persistRun(){
@@ -946,7 +974,7 @@
   }
   function doHint(){
     if(mode!=='play'||path.length===24) return;
-    if(challenge&&challenge.running){
+    if(challenge){
       if(performance.now()<hintCooldownUntil) return;
       hintCooldownUntil=performance.now()+10000;
     }
@@ -1242,7 +1270,7 @@
       basePath=path.slice();
       document.body.classList.replace('play','solver');
       $('modeTag').textContent='ai solver — dfs from your position';
-      $('modePlay').classList.remove('active'); $('modeSolver').classList.add('active');
+      $('modeBtn').setAttribute('aria-label','back to play');
       sizeCube(); sizeNet(); sizeTree();
       rebuildTrace();
       if(voided) log('⚡ first try marked ✗ — the solver knows the answer');
@@ -1252,16 +1280,16 @@
       resetRunState();
       document.body.classList.replace('solver','play');
       $('modeTag').textContent='play — draw on the cube';
-      $('modeSolver').classList.remove('active'); $('modePlay').classList.add('active');
+      $('modeBtn').setAttribute('aria-label','AI solver');
       sizeCube(); sizeNet();
       log('your board is back — the AI kept its hands off');
       viewsDirty=true; updateHud();
     }
   }
-  $('modePlay').onclick=()=>setMode('play');
-  $('modeSolver').onclick=()=>{
-    if(mode!=='solver' && firstTryAtStake()
-       && !confirmTwice('solver','⚠ the solver reveals the answer: your first try will count ✗')) return;
+  $('modeBtn').onclick=()=>{
+    if(mode==='solver'){ setMode('play'); return; }
+    if(firstTryAtStake()
+       && !confirmTwice($('modeBtn'),'⚠ the solver reveals the answer: your first try will count ✗')) return;
     setMode('solver');
   };
 
@@ -1288,7 +1316,7 @@
   $('resetBtn').onclick=()=>{
     if(challenge&&challenge.running){
       if(firstTryAtStake()
-         && !confirmTwice('reset','⚠ reset ends your first try: it will count ✗')) return;
+         && !confirmTwice($('resetBtn'),'⚠ reset ends your first try: it will count ✗')) return;
       endRun(false); $('pTime').textContent='–';
     }
     path=[startCell];
@@ -1324,7 +1352,7 @@
   $('newBtn').onclick=()=>{
     if(challenge&&challenge.running){
       if(firstTryAtStake()
-         && !confirmTwice('new','⚠ leaving ends your first try: it will count ✗')) return;
+         && !confirmTwice($('newBtn'),'⚠ leaving ends your first try: it will count ✗')) return;
       endRun(false);
     }
     tutEnd();
@@ -1369,12 +1397,11 @@
   $('tutSkip').onclick=()=>{ tutEnd(); log('your puzzle is back — start at 1'); };
   $('helpBtn').onclick=()=>{
     if(challenge&&challenge.running&&firstTryAtStake()
-       && !confirmTwice('help','⚠ the tutorial ends your first try: it will count ✗')) return;
+       && !confirmTwice($('helpBtn'),'⚠ the tutorial ends your first try: it will count ✗')) return;
     tutStart();
   };
   $('themeBtn').onclick=()=>{
-    const light=document.body.classList.toggle('light');
-    $('themeBtn').textContent=light?'☾':'☀';
+    document.body.classList.toggle('light');   // sun/moon icon swap is pure CSS via body.light
     applyTheme();
   };
 
