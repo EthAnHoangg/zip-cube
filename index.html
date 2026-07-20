@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Zip Cube</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -57,6 +57,7 @@
     background:radial-gradient(120% 90% at 50% 20%, var(--bg-hi) 0%, var(--bg-lo) 100%);
     color:var(--text); touch-action:none; user-select:none;
     display:flex; flex-direction:column;
+    height:100dvh;
   }
   header{display:flex;align-items:center;justify-content:space-between;gap:4px 10px;
     flex-wrap:wrap;padding:8px 14px 4px;flex:0 0 auto}
@@ -171,7 +172,7 @@
   .key.door:not(:disabled):active{transform:scale(.93);box-shadow:none}
   /* mode door: labeled — it's the marquee feature; accent "Back to play" keycap in solver */
   #modeBtn{width:auto;padding:9px 13px}
-  #modeBtn .ic-back,#modeBtn .backLbl{display:none}
+  #modeBtn .ic-back,#modeBtn .backLbl,#modeBtn .backShort{display:none}
   body.solver #modeBtn .botLbl{display:none}
   body.solver #modeBtn{width:auto;padding:9px 13px;background:var(--accent);border-color:var(--accent-edge);
     color:var(--accent-ink);box-shadow:0 3px 0 var(--accent-edge)}
@@ -194,6 +195,31 @@
   @media (prefers-reduced-motion:reduce){
     .key,.iconKey{transition:none}
     .dock .playOnly,.dock .solverOnly{animation:none}
+  }
+  /* small screens: net big enough to play on, data readable at arm's length.
+     solver's cube pane is short — there the net shrinks to stop covering the board.
+     :not(.big) keeps the expanded state winning these mode-scoped widths. */
+  @media (max-width:480px){
+    body.play #netPane:not(.big){width:min(58%,250px)}
+    body.solver #netPane:not(.big){width:min(36%,160px)}
+    .stat b,.stat b span{font-size:14px}
+    .hudSep{display:none}
+    /* logline may wrap to two lines — fixed height so pane sizes never reflow */
+    #logline{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+      line-height:1.3;height:35px}
+    /* solver dock in two rows: compact speed control, short "Back" label */
+    .speed{font-size:0;gap:3px}
+    input[type=range]{width:78px}
+    body.solver #modeBtn .backLbl{display:none}
+    body.solver #modeBtn .backShort{display:inline}
+  }
+  /* coarse pointers: every control at or near the 44px touch guideline */
+  @media (pointer:coarse){
+    .iconKey{width:40px;height:40px}
+    .key{padding:11px 13px}
+    .key.door{width:44px;padding:11px 0}
+    #modeBtn,body.solver #modeBtn{padding:11px 13px}
+    #netExpand{padding:10px 12px}
   }
   .speed{display:flex;align-items:center;gap:5px;font-size:10.5px;color:rgba(var(--fg-rgb),.7)}
   input[type=range]{width:100px;accent-color:var(--accent)}
@@ -328,7 +354,7 @@
         <svg class="ic-bot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v5m0 0-6 6m6-6 6 6M6 14v6m12-6v6"/></svg>
         <span class="botLbl">Solver</span>
         <svg class="ic-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
-        <span class="backLbl">Back to play</span></button>
+        <span class="backLbl">Back to play</span><span class="backShort">Back</span></button>
     </div>
   </div>
 </footer>
@@ -405,7 +431,21 @@
   cube.add(new THREE.Mesh(new THREE.BoxGeometry(2.02,2.02,2.02), bodyMat));
   function sizeCube(){
     const w=pane.clientWidth, h=pane.clientHeight;
-    camera.aspect=w/h; camera.updateProjectionMatrix();
+    camera.aspect=w/h;
+    // portrait play: reserve the compact net's strip so the cube sits above it
+    let reserve=0;
+    if(h>w && mode==='play'){
+      const netW=Math.min(w*(w<=480?0.58:0.46),250);
+      reserve=netW*0.75+18;
+    }
+    // dolly back so the cube fits the narrower of the two view cones (fov is vertical)
+    const vHalf=camera.fov/2*Math.PI/180;
+    const hUse=Math.max(h-reserve,120);
+    const vUse=Math.atan(Math.tan(vHalf)*hUse/h);
+    const hHalf=Math.atan(Math.tan(vHalf)*w/h);
+    camera.position.z=6.2*Math.max(1,Math.sin(vHalf)/Math.sin(Math.min(vUse,hHalf)));
+    camera.updateProjectionMatrix();
+    sceneG.position.y=reserve/2*(2*camera.position.z*Math.tan(vHalf)/h);
     renderer.setSize(w,h);
   }
 
