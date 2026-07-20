@@ -58,6 +58,14 @@ All existing rows are `flex-wrap`, so nothing breaks if a row gets tighter.
 - No orthographic camera, no cube geometry scaling — preserves depth feel and badge scale.
 - Net stays an overlay panel; no layout reflow of `#cubePane`.
 
+## Addendum (same day): deferred Low items, brought into scope
+
+After screenshot verification of the core fixes, the two deferred items were requested:
+
+- **Logline two-line wrap (≤480px):** `white-space:normal` with `-webkit-line-clamp:2` and a *fixed* 35px height. Fixed, not auto: pane heights derive from the flex column, and a growing logline would shrink `#cubePane` without firing the `resize` handler that re-sizes the canvases.
+- **Solver dock 3 → 2 rows (≤480px):** the pruning+speed group and the doors group share one row by trimming ~40pt: speed's "slow/fast" text labels hidden (`font-size:0` on `.speed`), slider 100→78px, and `#modeBtn` shows a short "Back" label (new `.backShort` span) instead of "Back to play". Doors keep `margin-left:auto`, preserving the stakes-position layout. On very narrow screens (~320px) the row may still wrap — graceful, via existing `flex-wrap`.
+- **Solver net occlusion (found in solver screenshot):** the 58% compact-net width is scoped to `body.play`; solver uses 36%/160px on phones so the net stops covering the 40%-tall cube pane. `:not(.big)` keeps the expand state winning. The header `.hudSep` is hidden ≤480px where the HUD wraps.
+
 ## Verification
 
 - Node script (scratchpad) replicating the fit formula across aspects: assert distance = 6.2 for aspect ≥ 1 and projected cube diameter ≤ usable pane at phone aspects (~0.5).

@@ -172,7 +172,7 @@
   .key.door:not(:disabled):active{transform:scale(.93);box-shadow:none}
   /* mode door: labeled — it's the marquee feature; accent "Back to play" keycap in solver */
   #modeBtn{width:auto;padding:9px 13px}
-  #modeBtn .ic-back,#modeBtn .backLbl{display:none}
+  #modeBtn .ic-back,#modeBtn .backLbl,#modeBtn .backShort{display:none}
   body.solver #modeBtn .botLbl{display:none}
   body.solver #modeBtn{width:auto;padding:9px 13px;background:var(--accent);border-color:var(--accent-edge);
     color:var(--accent-ink);box-shadow:0 3px 0 var(--accent-edge)}
@@ -204,6 +204,14 @@
     body.solver #netPane:not(.big){width:min(36%,160px)}
     .stat b,.stat b span{font-size:14px}
     .hudSep{display:none}
+    /* logline may wrap to two lines — fixed height so pane sizes never reflow */
+    #logline{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+      line-height:1.3;height:35px}
+    /* solver dock in two rows: compact speed control, short "Back" label */
+    .speed{font-size:0;gap:3px}
+    input[type=range]{width:78px}
+    body.solver #modeBtn .backLbl{display:none}
+    body.solver #modeBtn .backShort{display:inline}
   }
   /* coarse pointers: every control at or near the 44px touch guideline */
   @media (pointer:coarse){
@@ -346,7 +354,7 @@
         <svg class="ic-bot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v5m0 0-6 6m6-6 6 6M6 14v6m12-6v6"/></svg>
         <span class="botLbl">Solver</span>
         <svg class="ic-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
-        <span class="backLbl">Back to play</span></button>
+        <span class="backLbl">Back to play</span><span class="backShort">Back</span></button>
     </div>
   </div>
 </footer>
