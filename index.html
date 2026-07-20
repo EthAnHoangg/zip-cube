@@ -974,7 +974,7 @@
   }
   function doHint(){
     if(mode!=='play'||path.length===24) return;
-    if(challenge&&challenge.running){
+    if(challenge){
       if(performance.now()<hintCooldownUntil) return;
       hintCooldownUntil=performance.now()+10000;
     }
