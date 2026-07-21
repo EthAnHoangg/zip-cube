@@ -45,6 +45,10 @@ Controls are laid out by scope and stakes. The footer is a single `.dock` row: s
 
 Setting `viewsDirty=true` redraws cube tiles + net on the next frame; `treeDirty` throttles tree redraws (≥50ms apart). When touching shared state (path, heat, flash), set the flag rather than drawing directly.
 
+### Boot fold-in
+
+On every load (skipped under `prefers-reduced-motion`), the flat cross-net folds up into the cube over ~1.1s: a physically true hinged fold (`FOLD_CHAINS` — U/D/L/R hinge on their shared edge with F; B chains through R's hinge), then the group slerps to the rest pose, `bodyMesh` scales in, and badges pop ①→⑥. `foldTick()` recomputes every tile transform statelessly from canonical poses each frame, so badge rebuilds and theme retints mid-animation are harmless; `foldEnd()` (also fired by any `pointerdown`, capture phase) snaps to a state bit-identical to a normal boot. `pathGroup` is hidden until completion. The hinge tables are proven against the net layout by a node script kept in the design spec's Verification section.
+
 ### Input
 
 Three separate pointer handlers (cube, net, tree). On the cube and net, dragging from the path head extends the path ("draw"), dragging elsewhere rotates the cube (net: no-op); a tap on a visited cell truncates the path back to it. The tree canvas supports pan, pinch-zoom, and wheel-zoom, and auto-follows the search head unless the user pans.
