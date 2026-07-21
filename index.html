@@ -1717,7 +1717,7 @@
     $('chalBanner').classList.add('show');
   $('chalOk').onclick=()=>$('chalBanner').classList.remove('show');
   if(!bootIds && !tutSeen()) tutStart();
-  foldStart();
+  if(!(challenge && challenge.running)) foldStart(); // mid-solve resume skips the reveal
   loop();
   // debug hook for headless verification — read-only except arm()
   window.__zip={
