@@ -38,6 +38,14 @@ Every puzzle is guaranteed solvable: the generator finds a random Hamiltonian pa
 
 Illegal moves flash red and tell you why (`reach 3 first`, `6 must be your last cell`). The mini-map is the answer to "what's behind the cube" — jumps that cross hidden geometry render as dashed arcs.
 
+Everything above works the same with touch — drag and tap gestures are pointer-based, so it plays on a phone or tablet with no separate mobile mode.
+
+<p>
+  <img src="docs/images/play-dark-mobile.png" alt="Play mode on a phone — dark theme, cube and net stacked in a single-column mobile layout" width="32%">
+  <img src="docs/images/solver-mobile.png" alt="AI solver on a phone — cube, net overlay, and search tree with live counters" width="32%">
+  <img src="docs/images/challenge-mobile.png" alt="Leaderboard standings on a phone — puzzle code and ranked player results in a modal over the board" width="32%">
+</p>
+
 ### First visit? The game teaches itself
 
 A six-step interactive tutorial auto-starts on your first visit (and never again — it remembers via `localStorage`). It makes you *perform* each skill on a fixed practice board: spin the cube, draw from ①, chase checkpoints in order, undo a mistake, draw on the net, then finish the puzzle for real. The glowing-cell hint system guides every step; **Skip** bails out anytime, and the **?** button in the header replays it. Challenge links (`#z=…`) never hijack a first-timer into the tutorial — a race invitation stays a race.
@@ -99,7 +107,7 @@ JS reads the tokens once per switch (`readTokens()` → cached `T` object), reti
 index.html                       the whole game (markup, styles, logic)
 api/leaderboard.js               per-challenge leaderboard (Vercel function + Upstash Redis)
 docs/puzzle-and-solver.md        deep dive: generator & solver algorithms
-docs/images/                     README screenshots (play, solver, challenge standings)
+docs/images/                     README screenshots (play, solver, challenge standings, mobile)
 docs/superpowers/specs/          design docs
 .claude/skills/verify/SKILL.md   headless-Chrome verification recipe
 CLAUDE.md                        architecture notes for AI-assisted development
