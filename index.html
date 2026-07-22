@@ -1046,7 +1046,7 @@
   const TUT_STEPS=[
     {text:'Drag anywhere on the cube to spin it around.',
      done:e=>e.t==='rotate'},
-    {text:'Now drag from ① onto the glowing cell.', glow:true,
+    {text:'Now drag from ① onto the glowing cell — or just tap it.', glow:true,
      done:e=>e.t==='extend'&&e.id===hint.id},
     {text:'Keep drawing — checkpoints must be visited in order. Reach ②.', glow:true,
      skipIf:()=>nextExpected(path)>2,

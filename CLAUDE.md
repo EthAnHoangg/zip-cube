@@ -51,7 +51,7 @@ On every load (skipped under `prefers-reduced-motion`), the flat cross-net folds
 
 ### Input
 
-Three separate pointer handlers (cube, net, tree). On the cube and net, dragging from the path head extends the path ("draw"), dragging elsewhere rotates the cube (net: no-op); a tap on a visited cell truncates the path back to it. The tree canvas supports pan, pinch-zoom, and wheel-zoom, and auto-follows the search head unless the user pans.
+Three separate pointer handlers (cube, net, tree). On the cube and net, dragging from the path head extends the path ("draw"), dragging elsewhere rotates the cube (net: no-op); tapping is the no-drag equivalent — a tap on an unvisited neighbor of the head extends the path by one cell, a tap on a visited cell truncates the path back to it (`tapCell()`). The tree canvas supports pan, pinch-zoom, and wheel-zoom, and auto-follows the search head unless the user pans.
 
 ### First-time tutorial
 
